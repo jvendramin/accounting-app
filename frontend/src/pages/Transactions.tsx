@@ -30,12 +30,13 @@ import {
 } from "@/components/ui/select"
 import {
   DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem,
+  DropdownMenuGroup, DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu"
 import {
   InputGroup, InputGroupAddon, InputGroupInput, InputGroupButton,
 } from "@/components/ui/input-group"
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group"
-import { Trash2, Plus, SearchIcon, XIcon, MoreHorizontalIcon } from "lucide-react"
+import { Trash2, Plus, SearchIcon, XIcon, MoreHorizontalIcon, PencilIcon, TrashIcon } from "lucide-react"
 import { toast } from "sonner"
 import {
   DataGrid,
@@ -68,14 +69,17 @@ function ActionsCell<T extends { id: number | string }>({
         <Button className="size-7" size="icon" variant="ghost"><MoreHorizontalIcon /></Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent side="bottom" align="end">
-        <DropdownMenuItem onClick={() => onEdit(row.original)}>Edit</DropdownMenuItem>
-        <DropdownMenuItem
-          variant="destructive"
-          className="text-destructive focus:text-destructive focus:bg-destructive/10"
-          onClick={() => onDelete(row.original.id)}
-        >
-          Delete
-        </DropdownMenuItem>
+        <DropdownMenuGroup>
+          <DropdownMenuItem onClick={() => onEdit(row.original)}>
+            <PencilIcon /> Edit
+          </DropdownMenuItem>
+        </DropdownMenuGroup>
+        <DropdownMenuSeparator />
+        <DropdownMenuGroup>
+          <DropdownMenuItem variant="destructive" onClick={() => onDelete(row.original.id)}>
+            <TrashIcon /> Delete
+          </DropdownMenuItem>
+        </DropdownMenuGroup>
       </DropdownMenuContent>
     </DropdownMenu>
   )

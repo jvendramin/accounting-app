@@ -34,11 +34,9 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
   const session = auth.useSession()
 
   if (session.isPending) {
-    return (
-      <div className="grid min-h-svh place-items-center text-sm text-muted-foreground">
-        Loading…
-      </div>
-    )
+    // Blank screen while the auth session hydrates — usually <100ms,
+    // showing "Loading…" introduces a flash that's worse than nothing.
+    return <div className="min-h-svh bg-background" />
   }
 
   if (!session.data) return <LoginScreen />

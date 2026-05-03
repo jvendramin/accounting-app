@@ -16,17 +16,19 @@ import {
   type Row,
 } from "@tanstack/react-table"
 import { api } from "@/lib/api"
+import { auth } from "@/lib/auth"
 import { withMinDelay } from "@/lib/loading"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import {
   DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem,
+  DropdownMenuGroup, DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu"
 import { useAutoFitPageSize } from "@/hooks/use-auto-fit-page-size"
 import {
   InputGroup, InputGroupAddon, InputGroupInput, InputGroupButton,
 } from "@/components/ui/input-group"
-import { SearchIcon, XIcon, MoreHorizontalIcon } from "lucide-react"
+import { SearchIcon, XIcon, MoreHorizontalIcon, PencilIcon, TrashIcon } from "lucide-react"
 import { toast } from "sonner"
 import {
   DataGrid,
@@ -47,14 +49,21 @@ function ActionsCell<T extends { id: number | string }>({
         <Button className="size-7" size="icon" variant="ghost"><MoreHorizontalIcon /></Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent side="bottom" align="end">
-        {onEdit && <DropdownMenuItem onClick={() => onEdit(row.original)}>Edit</DropdownMenuItem>}
-        <DropdownMenuItem
-          variant="destructive"
-          className="text-destructive focus:text-destructive focus:bg-destructive/10"
-          onClick={() => onDelete(row.original.id)}
-        >
-          Delete
-        </DropdownMenuItem>
+        {onEdit && (
+          <>
+            <DropdownMenuGroup>
+              <DropdownMenuItem onClick={() => onEdit(row.original)}>
+                <PencilIcon /> Edit
+              </DropdownMenuItem>
+            </DropdownMenuGroup>
+            <DropdownMenuSeparator />
+          </>
+        )}
+        <DropdownMenuGroup>
+          <DropdownMenuItem variant="destructive" onClick={() => onDelete(row.original.id)}>
+            <TrashIcon /> Delete
+          </DropdownMenuItem>
+        </DropdownMenuGroup>
       </DropdownMenuContent>
     </DropdownMenu>
   )
@@ -68,6 +77,8 @@ type Receipt = {
 }
 
 export default function Receipts() {
+  const session = auth.useSession()
+  const userSub = session.data?.user?.id ?? session.data?.session?.userId
   const [rows, setRows] = useState<Receipt[]>([])
   const [loading, setLoading] = useState(true)
   const [q, setQ] = useState("")
@@ -193,7 +204,7 @@ export default function Receipts() {
                 const controller = new AbortController()
                 try {
                   const presign = await api.post("/receipts/presign", {
-                    filename: file.name, content_type: file.type,
+                    filename: file.name, content_type: file.type, user_sub: userSub,
                   })
                   const xhr = new XMLHttpRequest()
                   xhr.open("PUT", presign.data.upload_url)
@@ -203,8 +214,20 @@ export default function Receipts() {
                     if (xhr.status >= 200 && xhr.status < 300) {
                       const created = await api.post("/receipts", {
                         receipt: {
-                          filename: file.name, s3_key: presign.data.key, url: presign.data.public_url,
-                          content_type: file.type, size: file.size,
+                          filename: file.name,
+                          s3_key: presign.data.key,
+                          url: presign.data.public_url,
+                          content_type: file.type,
+                          size: file.size,
+                          user_sub: userSub,
+                          folder: presign.data.folder,
+                          bucket: presign.data.bucket,
+                          etag: xhr.getResponseHeader("ETag")?.replace(/"/g, ""),
+                          metadata: {
+                            uploaded_at: new Date().toISOString(),
+                            content_type: file.type,
+                            size: file.size,
+                          },
                         },
                       })
                       load(String(created.data.id))
