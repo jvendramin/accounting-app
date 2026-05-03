@@ -1,0 +1,116 @@
+/* react-csv-importer — dark mode overrides only; defaults intact in light mode */
+
+.dark .CSVImporter_Importer {
+  color: var(--foreground);
+}
+
+.dark .CSVImporter_ImporterFrame {
+  background: var(--card);
+  border: 1px solid var(--border);
+  color: var(--foreground);
+}
+.dark .CSVImporter_ImporterFrame__headerTitle,
+.dark .CSVImporter_ImporterFrame__headerSubtitle {
+  color: var(--foreground);
+}
+
+.dark .CSVImporter_FileSelector {
+  background: var(--card);
+  border-color: var(--border);
+  color: var(--muted-foreground);
+}
+.dark .CSVImporter_FileSelector[data-active="true"] {
+  background: color-mix(in oklab, var(--accent) 30%, var(--card));
+  border-color: var(--ring);
+}
+
+.dark .CSVImporter_TextButton {
+  background: var(--secondary);
+  color: var(--secondary-foreground);
+  border-color: var(--border);
+}
+.dark .CSVImporter_TextButton:hover:not(:disabled) {
+  background: color-mix(in oklab, var(--accent) 60%, var(--secondary));
+}
+
+.dark .CSVImporter_IconButton {
+  color: var(--foreground);
+}
+.dark .CSVImporter_IconButton:hover:not(:disabled) {
+  background: color-mix(in oklab, var(--foreground) 10%, transparent);
+}
+/* Inline SVG icons are baked-in as black — invert so they read on dark */
+.dark .CSVImporter_IconButton > span {
+  filter: invert(1);
+}
+
+.dark .CSVImporter_FileStep__header,
+.dark .CSVImporter_FileStep__headerToggle,
+.dark .CSVImporter_FileStep__mainPendingBlock {
+  color: var(--muted-foreground);
+}
+
+.dark .CSVImporter_FormatErrorMessage {
+  background: color-mix(in oklab, var(--destructive) 25%, var(--card));
+  color: var(--foreground);
+}
+
+.dark .CSVImporter_FormatRawPreview__scroll {
+  background: color-mix(in oklab, var(--foreground) 10%, var(--card));
+  color: var(--foreground);
+}
+.dark .CSVImporter_FormatRawPreview__pre > aside {
+  background: var(--secondary);
+  color: var(--secondary-foreground);
+}
+
+.dark .CSVImporter_FormatDataRowPreview {
+  border-color: var(--border);
+}
+.dark .CSVImporter_FormatDataRowPreview__table > thead > tr > th,
+.dark .CSVImporter_FormatDataRowPreview__table > tbody > tr > td {
+  border-right-color: color-mix(in oklab, var(--border) 80%, transparent);
+}
+.dark .CSVImporter_FormatDataRowPreview__table > tbody > tr > td {
+  color: var(--foreground);
+}
+
+.dark .CSVImporter_ColumnDragCard {
+  background: var(--secondary);
+  color: var(--secondary-foreground);
+  box-shadow: 0 1px 1px rgba(0, 0, 0, 0.4);
+}
+.dark .CSVImporter_ColumnDragCard__cardHeader {
+  color: var(--muted-foreground);
+}
+.dark .CSVImporter_ColumnDragCard__cardHeader > b {
+  background: color-mix(in oklab, var(--foreground) 10%, var(--secondary));
+}
+.dark .CSVImporter_ColumnDragCard[data-dummy="true"],
+.dark .CSVImporter_ColumnDragCard[data-shadow="true"] {
+  background: color-mix(in oklab, var(--foreground) 5%, var(--card));
+}
+
+.dark .CSVImporter_ColumnDragTargetArea__boxLabel {
+  color: var(--foreground);
+}
+.dark .CSVImporter_ColumnDragTargetArea__boxLabel > b {
+  color: var(--destructive);
+}
+.dark .CSVImporter_ColumnDragTargetArea__boxPlaceholderHelp {
+  color: var(--muted-foreground);
+}
+
+.dark .CSVImporter_ProgressDisplay__status {
+  color: var(--foreground);
+}
+.dark .CSVImporter_ProgressDisplay__status.-pending,
+.dark .CSVImporter_ProgressDisplay__count {
+  color: var(--muted-foreground);
+}
+.dark .CSVImporter_ProgressDisplay__progressBar {
+  background: color-mix(in oklab, var(--foreground) 10%, var(--card));
+}
+.dark .CSVImporter_ProgressDisplay__progressBarIndicator {
+  background: var(--primary);
+}

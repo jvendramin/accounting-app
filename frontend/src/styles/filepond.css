@@ -1,0 +1,55 @@
+/* FilePond — keep default light styling; apply dark-mode overrides only */
+
+.dark .filepond--root {
+  color: var(--foreground);
+}
+
+.dark .filepond--panel-root {
+  background-color: var(--card);
+  border: 1px dashed var(--border);
+  border-radius: var(--radius);
+}
+
+.dark .filepond--root:hover .filepond--panel-root,
+.dark .filepond--root[data-hopper-state="drag-over"] .filepond--panel-root {
+  border-color: var(--ring);
+  background-color: color-mix(in oklab, var(--accent) 30%, var(--card));
+}
+
+.dark .filepond--drop-label {
+  color: var(--muted-foreground);
+}
+
+.dark .filepond--label-action {
+  color: var(--primary);
+  text-decoration-color: color-mix(in oklab, var(--primary) 50%, transparent);
+}
+
+.dark .filepond--item-panel {
+  background-color: var(--secondary);
+}
+
+.dark .filepond--file {
+  color: var(--secondary-foreground);
+}
+
+.dark .filepond--file-action-button {
+  background-color: color-mix(in oklab, var(--foreground) 20%, transparent);
+  color: var(--foreground);
+}
+.dark .filepond--file-action-button:hover,
+.dark .filepond--file-action-button:focus {
+  box-shadow: 0 0 0 0.125em var(--ring);
+}
+
+.dark .filepond--file-status-main {
+  color: var(--foreground);
+}
+.dark .filepond--file-status-sub {
+  color: var(--muted-foreground);
+}
+
+.dark [data-filepond-item-state*="invalid"] .filepond--item-panel,
+.dark [data-filepond-item-state*="error"] .filepond--item-panel {
+  background-color: color-mix(in oklab, var(--destructive) 30%, var(--secondary));
+}
