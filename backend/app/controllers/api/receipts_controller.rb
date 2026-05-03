@@ -35,8 +35,11 @@ module Api
         credentials: Aws::Credentials.new(ENV["AWS_ACCESS_KEY_ID"], ENV["AWS_SECRET_ACCESS_KEY"]),
       }
       # Honor a custom S3-compatible endpoint (Backblaze B2, R2, MinIO, etc.).
-      if ENV["AWS_S3_ENDPOINT"].present?
-        client_opts[:endpoint] = ENV["AWS_S3_ENDPOINT"]
+      # Accept either "https://host" or bare "host" — normalize to a full URL.
+      if (raw_endpoint = ENV["AWS_S3_ENDPOINT"]).to_s.strip.then { |v| !v.empty? }
+        endpoint = ENV["AWS_S3_ENDPOINT"].strip
+        endpoint = "https://#{endpoint}" unless endpoint.match?(/\Ahttps?:\/\//i)
+        client_opts[:endpoint] = endpoint
         client_opts[:force_path_style] = true
       end
       signer = Aws::S3::Presigner.new(client: Aws::S3::Client.new(**client_opts))
@@ -49,8 +52,8 @@ module Api
       )
 
       public_url =
-        if ENV["AWS_S3_ENDPOINT"].present?
-          "#{ENV['AWS_S3_ENDPOINT'].chomp('/')}/#{bucket}/#{key}"
+        if client_opts[:endpoint]
+          "#{client_opts[:endpoint].chomp('/')}/#{bucket}/#{key}"
         else
           "https://#{bucket}.s3.#{ENV['AWS_REGION']}.amazonaws.com/#{key}"
         end

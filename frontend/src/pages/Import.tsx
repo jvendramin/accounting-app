@@ -38,6 +38,7 @@ import {
 } from "@/components/reui/frame"
 import { DatePicker } from "@/components/date-picker"
 import { Download, MoreHorizontalIcon, RotateCcw, PencilIcon, TrashIcon } from "lucide-react"
+import { invalidateCache } from "@/hooks/use-cached-fetch"
 import { toast } from "sonner"
 
 const ACCOUNTS_TEMPLATE_CSV = `name,account_type,code,description
@@ -239,6 +240,10 @@ export default function ImportPage() {
         toast.success(msg)
         setPending([])
       }
+      invalidateCache(
+        "dashboard:reports/profit_and_loss",
+        "dashboard:reports/cashflow",
+      )
     } catch (e: any) {
       toast.error(e.response?.data?.error || e.message)
     } finally {

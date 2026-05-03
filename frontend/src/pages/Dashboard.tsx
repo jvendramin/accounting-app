@@ -1,6 +1,4 @@
-import { useEffect, useState } from "react"
 import { api } from "@/lib/api"
-import { withMinDelay } from "@/lib/loading"
 import { fmtMoney } from "@/lib/format"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import {
@@ -10,26 +8,31 @@ import { Skeleton } from "@/components/ui/skeleton"
 import {
   Bar, BarChart, CartesianGrid, Line, LineChart, XAxis, YAxis,
 } from "recharts"
+import { useCachedFetch } from "@/hooks/use-cached-fetch"
 
 type PnL = {
   total_income: number; total_expense: number; net_income: number
   monthly: Array<{ month: string; income: number; expense: number; net: number }>
 }
 
-export default function Dashboard() {
-  const [pnl, setPnl] = useState<PnL | null>(null)
-  const [cash, setCash] = useState<{ monthly: Array<{ month: string; net: number; inflow: number; outflow: number }> } | null>(null)
-  const [loading, setLoading] = useState(true)
+type Cash = {
+  monthly: Array<{ month: string; net: number; inflow: number; outflow: number }>
+}
 
-  useEffect(() => {
-    setLoading(true)
-    Promise.all([
-      withMinDelay(api.get("/reports/profit_and_loss"), 1000),
-      withMinDelay(api.get("/reports/cashflow"), 1000),
-    ])
-      .then(([p, c]) => { setPnl(p.data); setCash(c.data) })
-      .finally(() => setLoading(false))
-  }, [])
+export default function Dashboard() {
+  const pnlQ = useCachedFetch<PnL>(
+    "dashboard:reports/profit_and_loss",
+    () => api.get("/reports/profit_and_loss").then((r) => r.data),
+  )
+  const cashQ = useCachedFetch<Cash>(
+    "dashboard:reports/cashflow",
+    () => api.get("/reports/cashflow").then((r) => r.data),
+  )
+
+  const pnl = pnlQ.data
+  const cash = cashQ.data
+  // Show skeletons only on first paint when neither cache nor a response exists.
+  const loading = (pnlQ.loading && !pnl) || (cashQ.loading && !cash)
 
   const Stat = ({ label, value }: { label: string; value: string }) => (
     <Card>

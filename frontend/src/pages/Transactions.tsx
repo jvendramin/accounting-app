@@ -59,6 +59,12 @@ import {
   FloatingToolbarSeparator,
 } from "@/components/floating-toolbar"
 import { useAutoFitPageSize } from "@/hooks/use-auto-fit-page-size"
+import { invalidateCache } from "@/hooks/use-cached-fetch"
+
+const DASHBOARD_CACHE_KEYS = [
+  "dashboard:reports/profit_and_loss",
+  "dashboard:reports/cashflow",
+] as const
 
 function ActionsCell<T extends { id: number | string }>({
   row, onEdit, onDelete,
@@ -312,6 +318,7 @@ export default function Transactions() {
       if (editingId) await api.put(`/transactions/${editingId}`, payload)
       else await api.post("/transactions", payload)
       setOpen(false); resetForms(); load()
+      invalidateCache(...DASHBOARD_CACHE_KEYS)
       toast.success(wasUpdate ? "Transaction updated" : "Transaction created")
     } catch (e: any) {
       toast.error(e.response?.data?.error || e.message)
@@ -323,6 +330,7 @@ export default function Transactions() {
     try {
       await api.delete(`/transactions/${id}`)
       load()
+      invalidateCache(...DASHBOARD_CACHE_KEYS)
       toast.error("Transaction deleted")
     } catch (e: any) {
       toast.error(e.response?.data?.error || e.message)
@@ -413,6 +421,7 @@ export default function Transactions() {
     try {
       await api.post("/transactions/bulk_destroy", { ids: selectedIds })
       setRowSelection({}); load()
+      invalidateCache(...DASHBOARD_CACHE_KEYS)
       toast.error(`${n} transaction${n === 1 ? "" : "s"} deleted`)
     } catch (e: any) {
       toast.error(e.response?.data?.error || e.message)
@@ -489,7 +498,7 @@ export default function Transactions() {
                 defaultFilterType="between"
                 periodTypes={["day"]}
               />
-              <Button onClick={newTxn}><Plus /> New Transaction</Button>
+              <Button onClick={newTxn}><Plus /> New</Button>
             </div>
           </FrameHeader>
           <FramePanel ref={panelRef} className="flex-1 min-h-0 overflow-hidden p-0 shadow-none">

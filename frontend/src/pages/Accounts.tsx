@@ -284,7 +284,7 @@ export default function Accounts() {
                 </SelectContent>
               </Select>
               <Button onClick={() => { setEditing({ account_type: "asset" }); setOpen(true) }}>
-                <Plus /> New Account
+                <Plus /> New
               </Button>
             </div>
           </FrameHeader>

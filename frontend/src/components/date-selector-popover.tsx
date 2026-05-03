@@ -27,7 +27,7 @@ interface DateSelectorPopoverProps
 export function DateSelectorPopover({
   value,
   onChange,
-  placeholder = "Select a date",
+  placeholder = "Select dates",
   triggerClassName,
   align = "start",
   ...rest
