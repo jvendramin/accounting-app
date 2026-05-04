@@ -39,6 +39,10 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Tab, TabList, Tabs } from "@/components/ui/tabs"
 import { DatePicker, DatePickerTrigger } from "@/components/ui/date-picker"
+import {
+  DateRangePicker,
+  DateRangePickerTrigger,
+} from "@/components/ui/date-range-picker"
 import { parseDate, type CalendarDate } from "@internationalized/date"
 import { IconPlus, IconTrash } from "@/components/icons"
 import { toast } from "sonner"
@@ -99,13 +103,15 @@ type SortDesc = { column: string; direction: "ascending" | "descending" }
 export default function TransactionsPage() {
   const [q, setQ] = useState("")
   const [type, setType] = useState("all")
+  const [from, setFrom] = useState("")
+  const [to, setTo] = useState("")
   const debouncedQ = useDebouncedValue(q, 250)
   const [sortDescriptor, setSortDescriptor] = useState<SortDesc>({
     column: "date",
     direction: "descending",
   })
 
-  const txKey = `transactions:q=${debouncedQ}|type=${type}`
+  const txKey = `transactions:q=${debouncedQ}|type=${type}|from=${from}|to=${to}`
   const {
     data: rowsData,
     loading: txLoading,
@@ -114,6 +120,8 @@ export default function TransactionsPage() {
     api.get("/api/transactions", {
       ...(debouncedQ ? { q: debouncedQ } : {}),
       ...(type !== "all" ? { type } : {}),
+      ...(from ? { from } : {}),
+      ...(to ? { to } : {}),
     }),
   )
   const rawRows = rowsData ?? []
@@ -357,7 +365,7 @@ export default function TransactionsPage() {
               aria-label="Search"
               value={q}
               onChange={setQ}
-              className="w-full sm:w-72"
+              className="w-full sm:w-56"
             >
               <SearchInput placeholder="Search..." />
             </SearchField>
@@ -377,6 +385,21 @@ export default function TransactionsPage() {
                 ))}
               </SelectContent>
             </Select>
+            <DateRangePicker
+              aria-label="Date range"
+              className="w-[280px]"
+              value={
+                from && to
+                  ? { start: parseDate(from), end: parseDate(to) }
+                  : null
+              }
+              onChange={(v) => {
+                setFrom(v ? v.start.toString() : "")
+                setTo(v ? v.end.toString() : "")
+              }}
+            >
+              <DateRangePickerTrigger />
+            </DateRangePicker>
             <Button onPress={newTxn}>
               <IconPlus /> New
             </Button>
