@@ -1,5 +1,8 @@
 import { NextResponse } from "next/server"
 import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3"
+
+export const runtime = "nodejs"
+export const dynamic = "force-dynamic"
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner"
 import { z } from "zod"
 import { randomUUID } from "crypto"
