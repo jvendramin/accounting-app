@@ -205,30 +205,34 @@ export default function Accounts() {
   return (
     <div className="flex h-full min-h-0 flex-col gap-4">
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="sm:max-w-2xl">
-          <DialogHeader><DialogTitle>{editing?.id ? "Edit Account" : "New Account"}</DialogTitle></DialogHeader>
-          <div className="grid gap-4">
-            <div className="grid gap-2">
-              <Label>Name</Label>
-              <Input value={editing?.name ?? ""} onChange={(e) => setEditing({ ...editing!, name: e.target.value })} />
-            </div>
-            <div className="grid gap-2">
-              <Label>Code</Label>
-              <Input value={editing?.code ?? ""} onChange={(e) => setEditing({ ...editing!, code: e.target.value })} />
-            </div>
-            <div className="grid gap-2">
-              <Label>Type</Label>
-              <Select value={editing?.account_type} onValueChange={(v) => setEditing({ ...editing!, account_type: v as any })}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  {TYPES.map((t) => <SelectItem key={t} value={t}>{titleCase(t)}</SelectItem>)}
-                </SelectContent>
-              </Select>
+        <DialogContent className="flex max-h-[calc(100dvh-1rem)] flex-col gap-0 p-0 sm:max-h-[calc(100vh-4rem)] sm:max-w-2xl">
+          <DialogHeader className="px-6 pt-6">
+            <DialogTitle>{editing?.id ? "Edit Account" : "New Account"}</DialogTitle>
+          </DialogHeader>
+          <div className="min-h-0 flex-1 overflow-y-auto px-6 py-4">
+            <div className="grid gap-4">
+              <div className="grid gap-2">
+                <Label>Name</Label>
+                <Input value={editing?.name ?? ""} onChange={(e) => setEditing({ ...editing!, name: e.target.value })} />
+              </div>
+              <div className="grid gap-2">
+                <Label>Code</Label>
+                <Input value={editing?.code ?? ""} onChange={(e) => setEditing({ ...editing!, code: e.target.value })} />
+              </div>
+              <div className="grid gap-2">
+                <Label>Type</Label>
+                <Select value={editing?.account_type} onValueChange={(v) => setEditing({ ...editing!, account_type: v as any })}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {TYPES.map((t) => <SelectItem key={t} value={t}>{titleCase(t)}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
           </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setOpen(false)}>Cancel</Button>
-            <Button onClick={save}>Save</Button>
+          <DialogFooter className="border-t bg-popover px-6 py-3">
+            <Button variant="outline" onClick={() => setOpen(false)} className="w-full sm:w-auto">Cancel</Button>
+            <Button onClick={save} className="w-full sm:w-auto">Save</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

@@ -509,21 +509,25 @@ export default function Transactions() {
       </DataGrid>
 
       <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) resetForms() }}>
-        <DialogContent className="sm:max-w-5xl">
-          <DialogHeader>
+        <DialogContent className="flex max-h-[calc(100dvh-1rem)] flex-col gap-0 p-0 sm:max-h-[calc(100vh-4rem)] sm:max-w-5xl">
+          <DialogHeader className="px-6 pt-6">
             <DialogTitle>{editingId ? "Edit Transaction" : "Add Transaction"}</DialogTitle>
           </DialogHeader>
 
-          <ToggleGroup
-            value={tab}
-            onValueChange={(v) => setTab(v as any)}
-            ariaLabel="Transaction type"
-            className="w-full"
-            stretch
-          >
-            <ToggleGroupItem value="simple">Deposit / Withdrawal</ToggleGroupItem>
-            <ToggleGroupItem value="journal">Journal Entry</ToggleGroupItem>
-          </ToggleGroup>
+          <div className="px-6 pt-4">
+            <ToggleGroup
+              value={tab}
+              onValueChange={(v) => setTab(v as any)}
+              ariaLabel="Transaction type"
+              className="w-full"
+              stretch
+            >
+              <ToggleGroupItem value="simple">Deposit / Withdrawal</ToggleGroupItem>
+              <ToggleGroupItem value="journal">Journal Entry</ToggleGroupItem>
+            </ToggleGroup>
+          </div>
+
+          <div className="min-h-0 flex-1 overflow-y-auto px-6 py-4">
 
           {tab === "simple" && (
             <div className="grid gap-4 pt-4">
@@ -667,9 +671,11 @@ export default function Transactions() {
             </div>
           )}
 
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setOpen(false)}>Cancel</Button>
-            <Button onClick={save} disabled={!canSave}>Save</Button>
+          </div>
+
+          <DialogFooter className="border-t bg-popover px-6 py-3">
+            <Button variant="outline" onClick={() => setOpen(false)} className="w-full sm:w-auto">Cancel</Button>
+            <Button onClick={save} disabled={!canSave} className="w-full sm:w-auto">Save</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
