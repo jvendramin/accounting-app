@@ -38,6 +38,8 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Tab, TabList, Tabs } from "@/components/ui/tabs"
+import { DatePicker, DatePickerTrigger } from "@/components/ui/date-picker"
+import { parseDate, type CalendarDate } from "@internationalized/date"
 import { IconPlus, IconTrash } from "@/components/icons"
 import { toast } from "sonner"
 import { fmtMoney, titleCase } from "@/lib/format"
@@ -489,13 +491,15 @@ export default function TransactionsPage() {
             {tab === "simple" ? (
               <div className="grid gap-4">
                 <div className="grid gap-4 sm:grid-cols-2">
-                  <TextField
-                    value={simple.date}
-                    onChange={(v) => setSimple({ ...simple, date: v })}
+                  <DatePicker
+                    value={simple.date ? parseDate(simple.date) : null}
+                    onChange={(d) =>
+                      setSimple({ ...simple, date: d ? d.toString() : "" })
+                    }
                   >
                     <Label>Date</Label>
-                    <Input type="date" />
-                  </TextField>
+                    <DatePickerTrigger />
+                  </DatePicker>
                   <TextField
                     value={simple.reference}
                     onChange={(v) => setSimple({ ...simple, reference: v })}
@@ -591,13 +595,15 @@ export default function TransactionsPage() {
             ) : (
               <div className="grid gap-4">
                 <div className="grid gap-4 sm:grid-cols-2">
-                  <TextField
-                    value={journal.date}
-                    onChange={(v) => setJournal({ ...journal, date: v })}
+                  <DatePicker
+                    value={journal.date ? parseDate(journal.date) : null}
+                    onChange={(d) =>
+                      setJournal({ ...journal, date: d ? d.toString() : "" })
+                    }
                   >
                     <Label>Date</Label>
-                    <Input type="date" />
-                  </TextField>
+                    <DatePickerTrigger />
+                  </DatePicker>
                   <TextField
                     value={journal.reference}
                     onChange={(v) => setJournal({ ...journal, reference: v })}

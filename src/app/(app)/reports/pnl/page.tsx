@@ -10,9 +10,12 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { TextField } from "@/components/ui/text-field"
-import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/field"
+import {
+  DateRangePicker,
+  DateRangePickerTrigger,
+} from "@/components/ui/date-range-picker"
+import { parseDate } from "@internationalized/date"
 import { useCachedFetch } from "@/hooks/use-cached-fetch"
 import { api } from "@/lib/api"
 import { fmtMoney } from "@/lib/format"
@@ -40,15 +43,21 @@ export default function ReportsPnLPage() {
     <Card className="flex flex-1 min-h-0 flex-col">
       <CardHeader className="flex w-full flex-col items-stretch gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
         <CardTitle>Profit &amp; Loss</CardTitle>
-        <div className="flex flex-wrap items-end gap-2.5 w-full sm:w-auto">
-          <TextField value={from} onChange={setFrom} className="w-40">
-            <Label>From</Label>
-            <Input type="date" />
-          </TextField>
-          <TextField value={to} onChange={setTo} className="w-40">
-            <Label>To</Label>
-            <Input type="date" />
-          </TextField>
+        <div className="w-full sm:w-auto">
+          <DateRangePicker
+            value={
+              from && to
+                ? { start: parseDate(from), end: parseDate(to) }
+                : null
+            }
+            onChange={(v) => {
+              setFrom(v ? v.start.toString() : "")
+              setTo(v ? v.end.toString() : "")
+            }}
+          >
+            <Label>Period</Label>
+            <DateRangePickerTrigger />
+          </DateRangePicker>
         </div>
       </CardHeader>
       <CardContent className="flex-1 overflow-auto p-0">

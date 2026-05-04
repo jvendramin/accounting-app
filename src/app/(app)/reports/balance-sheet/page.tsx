@@ -10,9 +10,9 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { TextField } from "@/components/ui/text-field"
-import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/field"
+import { DatePicker, DatePickerTrigger } from "@/components/ui/date-picker"
+import { parseDate } from "@internationalized/date"
 import { useCachedFetch } from "@/hooks/use-cached-fetch"
 import { api } from "@/lib/api"
 import { fmtMoney, titleCase } from "@/lib/format"
@@ -46,10 +46,13 @@ export default function ReportsBalanceSheetPage() {
     <Card className="flex flex-1 min-h-0 flex-col">
       <CardHeader className="flex w-full flex-col items-stretch gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
         <CardTitle>Balance Sheet</CardTitle>
-        <TextField value={asOf} onChange={setAsOf} className="w-40">
+        <DatePicker
+          value={asOf ? parseDate(asOf) : null}
+          onChange={(d) => setAsOf(d ? d.toString() : "")}
+        >
           <Label>As of</Label>
-          <Input type="date" />
-        </TextField>
+          <DatePickerTrigger />
+        </DatePicker>
       </CardHeader>
       <CardContent className="flex-1 overflow-auto p-0">
         <Table aria-label="Balance sheet">
