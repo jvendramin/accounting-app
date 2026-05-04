@@ -201,7 +201,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         <SidebarRail />
       </Sidebar>
       <SidebarInset>
-        <header className="sticky top-0 z-10 flex h-14 items-center gap-3 px-4">
+        <header className="sticky top-0 z-10 flex h-14 items-center gap-3 bg-muted px-4">
           <SidebarTrigger />
           <Separator orientation="vertical" className="h-5" />
           <h1 className="text-sm font-medium">{title}</h1>
