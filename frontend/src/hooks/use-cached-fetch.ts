@@ -70,6 +70,11 @@ export function useCachedFetch<T>(
         writeSession(key, entry)
         setData(fresh)
       })
+      .catch(() => {
+        // Errors are toasted by the axios response interceptor — we just
+        // need to swallow the rejection here so it doesn't bubble as an
+        // unhandled promise and so finally still clears loading.
+      })
       .finally(() => setLoading(false))
   }
 
