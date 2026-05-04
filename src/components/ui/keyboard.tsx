@@ -1,12 +1,9 @@
-"use client";
+"use client"
 
-import { Keyboard as KeyboardPrimitive } from "react-aria-components/Keyboard";
-import { twMerge } from "tailwind-merge";
+import { Keyboard as KeyboardPrimitive } from "react-aria-components/Keyboard"
+import { twMerge } from "tailwind-merge"
 
-export function Keyboard({
-  className,
-  ...props
-}: React.ComponentProps<typeof KeyboardPrimitive>) {
+export function Keyboard({ className, ...props }: React.ComponentProps<typeof KeyboardPrimitive>) {
   return (
     <KeyboardPrimitive
       data-slot="keyboard"
@@ -16,5 +13,5 @@ export function Keyboard({
       )}
       {...props}
     />
-  );
+  )
 }

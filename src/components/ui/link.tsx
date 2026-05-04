@@ -1,14 +1,13 @@
-"use client";
+"use client"
 
-import NextLink from "next/link";
 import {
   Link as LinkPrimitive,
   type LinkProps as LinkPrimitiveProps,
-} from "react-aria-components/Link";
-import { cx } from "@/lib/primitive";
+} from "react-aria-components/Link"
+import { cx } from "@/lib/primitive"
 
 export interface LinkProps extends LinkPrimitiveProps {
-  ref?: React.RefObject<HTMLAnchorElement>;
+  ref?: React.RefObject<HTMLAnchorElement>
 }
 
 export function Link({ className, ref, ...props }: LinkProps) {
@@ -25,9 +24,6 @@ export function Link({ className, ref, ...props }: LinkProps) {
         className,
       )}
       {...props}
-      render={(domProps) =>
-        "href" in domProps ? <NextLink {...domProps} /> : <span {...domProps} />
-      }
     />
-  );
+  )
 }

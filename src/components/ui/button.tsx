@@ -1,11 +1,11 @@
-"use client";
+"use client"
 
 import {
   Button as ButtonPrimitive,
   type ButtonProps as ButtonPrimitiveProps,
-} from "react-aria-components/Button";
-import { tv, type VariantProps } from "tailwind-variants";
-import { cx } from "@/lib/primitive";
+} from "react-aria-components/Button"
+import { tv, type VariantProps } from "tailwind-variants"
+import { cx } from "@/lib/primitive"
 
 export const buttonStyles = tv({
   base: [
@@ -88,22 +88,13 @@ export const buttonStyles = tv({
     size: "md",
     isCircle: false,
   },
-});
+})
 
-export interface ButtonProps
-  extends ButtonPrimitiveProps,
-    VariantProps<typeof buttonStyles> {
-  ref?: React.Ref<HTMLButtonElement>;
+export interface ButtonProps extends ButtonPrimitiveProps, VariantProps<typeof buttonStyles> {
+  ref?: React.Ref<HTMLButtonElement>
 }
 
-export function Button({
-  className,
-  intent,
-  size,
-  isCircle,
-  ref,
-  ...props
-}: ButtonProps) {
+export function Button({ className, intent, size, isCircle, ref, ...props }: ButtonProps) {
   return (
     <ButtonPrimitive
       ref={ref}
@@ -117,5 +108,5 @@ export function Button({
         className,
       )}
     />
-  );
+  )
 }
