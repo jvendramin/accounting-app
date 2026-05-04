@@ -497,14 +497,14 @@ export default function ImportPage() {
           tableLayout={{ columnsResizable: false, columnsMovable: false, columnsVisibility: false }}
         >
           <Frame className="w-full flex-1 min-h-0 flex flex-col" stacked dense>
-            <FrameHeader className="flex w-full flex-row flex-wrap items-center justify-between gap-3">
+            <FrameHeader className="flex w-full flex-col items-stretch gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
               <div className="flex flex-col gap-0.5">
                 <FrameTitle>Staged transactions</FrameTitle>
                 <p className="text-xs text-muted-foreground">
                   Click the kind badge to flip deposit / withdrawal. Edit a row to fix accounts or any other field.
                 </p>
               </div>
-              <div className="flex items-center gap-2">
+              <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
                 <Button size="sm" variant="ghost" onClick={clearPending} disabled={submitting}>
                   <RotateCcw /> Clear
                 </Button>

@@ -255,10 +255,10 @@ export default function Accounts() {
         }}
       >
         <Frame className="w-full flex-1 min-h-0 flex flex-col" stacked dense>
-          <FrameHeader className="flex w-full flex-row flex-wrap items-center justify-between gap-3">
+          <FrameHeader className="flex w-full flex-col items-stretch gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
             <FrameTitle>Chart of Accounts</FrameTitle>
-            <div className="flex items-center gap-2.5">
-              <InputGroup className="w-96">
+            <div className="flex flex-wrap items-center gap-2.5 w-full sm:w-auto">
+              <InputGroup className="w-full sm:w-96">
                 <InputGroupAddon align="inline-start"><SearchIcon /></InputGroupAddon>
                 <InputGroupInput
                   placeholder="Search..."
@@ -274,7 +274,7 @@ export default function Accounts() {
                 )}
               </InputGroup>
               <Select value={typeFilter} onValueChange={setTypeFilter}>
-                <SelectTrigger className="w-[160px]"><SelectValue /></SelectTrigger>
+                <SelectTrigger className="w-[140px] sm:w-[160px]"><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All Types</SelectItem>
                   {TYPES.map((t) => <SelectItem key={t} value={t}>{titleCase(t)}</SelectItem>)}

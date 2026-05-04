@@ -121,9 +121,9 @@ export default function ReportsCashflow() {
         }}
       >
         <Frame className="w-full" stacked dense>
-          <FrameHeader className="flex w-full flex-row flex-wrap items-center justify-between gap-3">
+          <FrameHeader className="flex w-full flex-col items-stretch gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
             <FrameTitle>Cash Flow</FrameTitle>
-            <div className="flex items-center gap-2.5">
+            <div className="flex flex-wrap items-center gap-2.5 w-full sm:w-auto">
               <DateSelectorPopover
                 value={rangeValue}
                 onChange={handleRangeChange}

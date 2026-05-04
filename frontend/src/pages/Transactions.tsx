@@ -462,10 +462,10 @@ export default function Transactions() {
         }}
       >
         <Frame className="w-full flex-1 min-h-0 flex flex-col" stacked dense>
-          <FrameHeader className="flex w-full flex-row flex-wrap items-center justify-between gap-3">
+          <FrameHeader className="flex w-full flex-col items-stretch gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
             <FrameTitle>Transactions</FrameTitle>
-            <div className="flex items-center gap-2.5">
-              <InputGroup className="w-96">
+            <div className="flex flex-wrap items-center gap-2.5 w-full sm:w-auto">
+              <InputGroup className="w-full sm:w-96">
                 <InputGroupAddon align="inline-start"><SearchIcon /></InputGroupAddon>
                 <InputGroupInput
                   placeholder="Search..."
@@ -481,7 +481,7 @@ export default function Transactions() {
                 )}
               </InputGroup>
               <Select value={type} onValueChange={setType}>
-                <SelectTrigger className="w-[160px]"><SelectValue /></SelectTrigger>
+                <SelectTrigger className="w-[140px] sm:w-[160px]"><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All Types</SelectItem>
                   {FILTER_TYPES.map((t) => <SelectItem key={t} value={t}>{titleCaseType(t)}</SelectItem>)}
@@ -613,7 +613,7 @@ export default function Transactions() {
                   <Label>Journal Lines</Label>
                   <Button size="sm" variant="outline" onClick={addLine}><Plus /> Add line</Button>
                 </div>
-                <div className="rounded-md border">
+                <div className="rounded-md border overflow-x-auto">
                   {/* Editable journal-lines form table — kept as plain shadcn Table (form, not a data grid). */}
                   <Table>
                     <TableHeader>

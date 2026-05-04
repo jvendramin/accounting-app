@@ -272,10 +272,10 @@ export default function Receipts() {
         }}
       >
         <Frame className="w-full flex-1 min-h-0 flex flex-col" stacked dense>
-          <FrameHeader className="flex w-full flex-row flex-wrap items-center justify-between gap-3">
+          <FrameHeader className="flex w-full flex-col items-stretch gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
             <FrameTitle>Receipts</FrameTitle>
-            <div className="flex items-center gap-2.5">
-              <InputGroup className="w-96">
+            <div className="flex flex-wrap items-center gap-2.5 w-full sm:w-auto">
+              <InputGroup className="w-full sm:w-96">
                 <InputGroupAddon align="inline-start"><SearchIcon /></InputGroupAddon>
                 <InputGroupInput
                   placeholder="Search..."

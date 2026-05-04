@@ -30,7 +30,7 @@ export function AppShell() {
           <Separator orientation="vertical" className="h-5" />
           <h1 className="text-sm font-medium">{title}</h1>
         </header>
-        <main className="flex flex-1 min-h-0 flex-col overflow-hidden p-6">
+        <main className="flex flex-1 min-h-0 flex-col overflow-hidden p-3 sm:p-4 md:p-6">
           <Outlet />
         </main>
       </SidebarInset>
