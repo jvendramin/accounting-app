@@ -311,3 +311,23 @@ If you want to use the typography plugin, uncomment the line below.
   outline: 1px solid var(--primary);
   transform: translateZ(0);
 }
+
+/* Pointer cursor on every interactive control. React Aria primitives use
+   role="button|menuitem|tab|option|switch|checkbox|radio" on their slots,
+   plus enabled native <button>s. Keep disabled/loading states default. */
+button:not(:disabled),
+[role="button"]:not([aria-disabled="true"]),
+[role="menuitem"]:not([aria-disabled="true"]),
+[role="menuitemradio"]:not([aria-disabled="true"]),
+[role="menuitemcheckbox"]:not([aria-disabled="true"]),
+[role="tab"]:not([aria-disabled="true"]),
+[role="option"]:not([aria-disabled="true"]),
+[role="link"]:not([aria-disabled="true"]),
+[role="switch"]:not([aria-disabled="true"]),
+[role="checkbox"]:not([aria-disabled="true"]),
+[role="radio"]:not([aria-disabled="true"]),
+[data-pressed],
+[data-row][data-href],
+tr[data-row]:has(:not(td:has(input))) {
+  cursor: pointer;
+}

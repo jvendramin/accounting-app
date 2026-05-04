@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react"
 import { TableBody } from "react-aria-components"
+import { EllipsisVerticalIcon } from "@heroicons/react/16/solid"
 import {
   Table,
   TableCell,
@@ -10,6 +11,7 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import { Button } from "@/components/ui/button"
+import { SearchField, SearchInput } from "@/components/ui/search-field"
 import { TextField } from "@/components/ui/text-field"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/field"
@@ -26,6 +28,13 @@ import {
   ModalHeader,
   ModalTitle,
 } from "@/components/ui/modal"
+import {
+  Menu,
+  MenuContent,
+  MenuItem,
+  MenuSeparator,
+  MenuTrigger,
+} from "@/components/ui/menu"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { IconPlus } from "@/components/icons"
@@ -43,6 +52,8 @@ type Account = {
 
 const TYPES = ["asset", "liability", "equity", "income", "expense"] as const
 
+type SortDesc = { column: string; direction: "ascending" | "descending" }
+
 export default function AccountsPage() {
   const [rows, setRows] = useState<Account[]>([])
   const [loading, setLoading] = useState(true)
@@ -50,6 +61,10 @@ export default function AccountsPage() {
   const [type, setType] = useState<string>("all")
   const [open, setOpen] = useState(false)
   const [editing, setEditing] = useState<Partial<Account> | null>(null)
+  const [sortDescriptor, setSortDescriptor] = useState<SortDesc>({
+    column: "code",
+    direction: "ascending",
+  })
 
   const load = () => {
     setLoading(true)
@@ -65,7 +80,7 @@ export default function AccountsPage() {
 
   const filtered = useMemo(() => {
     const ql = q.trim().toLowerCase()
-    return rows.filter((r) => {
+    let out = rows.filter((r) => {
       if (type !== "all" && r.account_type !== type) return false
       if (!ql) return true
       return (
@@ -73,7 +88,18 @@ export default function AccountsPage() {
         (r.code ?? "").toLowerCase().includes(ql)
       )
     })
-  }, [rows, q, type])
+    const { column, direction } = sortDescriptor
+    out = [...out].sort((a, b) => {
+      const av = (a as any)[column] ?? ""
+      const bv = (b as any)[column] ?? ""
+      const cmp =
+        typeof av === "number" && typeof bv === "number"
+          ? av - bv
+          : String(av).localeCompare(String(bv))
+      return direction === "descending" ? -cmp : cmp
+    })
+    return out
+  }, [rows, q, type, sortDescriptor])
 
   const save = async () => {
     if (!editing?.name || !editing?.account_type) {
@@ -113,14 +139,14 @@ export default function AccountsPage() {
         <CardHeader className="flex w-full flex-col items-stretch gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
           <CardTitle>Chart of Accounts</CardTitle>
           <div className="flex flex-wrap items-center gap-2.5 w-full sm:w-auto">
-            <TextField
+            <SearchField
               aria-label="Search"
               value={q}
               onChange={setQ}
               className="w-full sm:w-72"
             >
-              <Input placeholder="Search..." />
-            </TextField>
+              <SearchInput placeholder="Search..." />
+            </SearchField>
             <Select
               aria-label="Type"
               selectedKey={type}
@@ -148,15 +174,28 @@ export default function AccountsPage() {
           </div>
         </CardHeader>
         <CardContent className="flex-1 overflow-auto p-0">
-          <Table aria-label="Accounts">
+          <Table
+            allowResize
+            aria-label="Accounts"
+            sortDescriptor={sortDescriptor}
+            onSortChange={(d) => setSortDescriptor(d as SortDesc)}
+          >
             <IntentTableHeader>
-              <TableColumn id="code" isRowHeader>
+              <TableColumn id="code" isRowHeader allowsSorting isResizable>
                 Code
               </TableColumn>
-              <TableColumn id="name">Name</TableColumn>
-              <TableColumn id="type">Type</TableColumn>
-              <TableColumn id="balance">Balance</TableColumn>
-              <TableColumn id="actions">{""}</TableColumn>
+              <TableColumn id="name" allowsSorting isResizable className="w-full">
+                Name
+              </TableColumn>
+              <TableColumn id="account_type" allowsSorting>
+                Type
+              </TableColumn>
+              <TableColumn id="balance" allowsSorting>
+                Balance
+              </TableColumn>
+              <TableColumn id="actions" width={56} minWidth={56} maxWidth={56}>
+                {""}
+              </TableColumn>
             </IntentTableHeader>
             <TableBody
               items={filtered}
@@ -167,13 +206,7 @@ export default function AccountsPage() {
               )}
             >
               {(a) => (
-                <TableRow
-                  id={a.id}
-                  onAction={() => {
-                    setEditing(a)
-                    setOpen(true)
-                  }}
-                >
+                <TableRow id={a.id}>
                   <TableCell className="font-mono text-xs">{a.code}</TableCell>
                   <TableCell className="font-medium">{a.name}</TableCell>
                   <TableCell>
@@ -183,13 +216,27 @@ export default function AccountsPage() {
                     {fmtMoney(a.balance)}
                   </TableCell>
                   <TableCell>
-                    <Button
-                      intent="plain"
-                      size="sq-sm"
-                      onPress={() => remove(a.id)}
-                    >
-                      Delete
-                    </Button>
+                    <div className="flex justify-end">
+                      <Menu>
+                        <MenuTrigger className="size-6">
+                          <EllipsisVerticalIcon />
+                        </MenuTrigger>
+                        <MenuContent aria-label="Actions" placement="left top">
+                          <MenuItem
+                            onAction={() => {
+                              setEditing(a)
+                              setOpen(true)
+                            }}
+                          >
+                            Edit
+                          </MenuItem>
+                          <MenuSeparator />
+                          <MenuItem intent="danger" onAction={() => remove(a.id)}>
+                            Delete
+                          </MenuItem>
+                        </MenuContent>
+                      </Menu>
+                    </div>
                   </TableCell>
                 </TableRow>
               )}
@@ -222,25 +269,25 @@ export default function AccountsPage() {
             </TextField>
             <div className="grid gap-1.5">
               <Label>Type</Label>
-            <Select
-              aria-label="Type"
-              selectedKey={editing?.account_type}
-              onSelectionChange={(k) =>
-                setEditing({
-                  ...editing!,
-                  account_type: k as Account["account_type"],
-                })
-              }
-            >
-              <SelectTrigger />
-              <SelectContent>
-                {TYPES.map((t) => (
-                  <SelectItem key={t} id={t}>
-                    {titleCase(t)}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+              <Select
+                aria-label="Type"
+                selectedKey={editing?.account_type}
+                onSelectionChange={(k) =>
+                  setEditing({
+                    ...editing!,
+                    account_type: k as Account["account_type"],
+                  })
+                }
+              >
+                <SelectTrigger />
+                <SelectContent>
+                  {TYPES.map((t) => (
+                    <SelectItem key={t} id={t}>
+                      {titleCase(t)}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
           </div>
           <ModalFooter>

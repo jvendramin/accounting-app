@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server"
-import { sql, and, eq, gte, lte, ilike, or } from "drizzle-orm"
+import { sql, and, eq, gte, lte, ilike, or, inArray } from "drizzle-orm"
 import { z } from "zod"
-import { db, transactions, journalLines } from "@/lib/db"
+import { db, transactions, journalLines, accounts } from "@/lib/db"
 
 export const dynamic = "force-dynamic"
 
@@ -34,15 +34,21 @@ export async function GET(req: Request) {
   if (txs.length === 0) return NextResponse.json([])
 
   const txIds = txs.map((t) => t.id)
-  const linesRows = await db.execute(sql`
-    select jl.id, jl.transaction_id, jl.account_id, jl.debit::float8 as debit,
-           jl.credit::float8 as credit, jl.memo, a.name as account_name
-    from journal_lines jl
-    left join accounts a on a.id = jl.account_id
-    where jl.transaction_id = any(${txIds})
-  `)
+  const lineRows = await db
+    .select({
+      id: journalLines.id,
+      transaction_id: journalLines.transactionId,
+      account_id: journalLines.accountId,
+      debit: journalLines.debit,
+      credit: journalLines.credit,
+      memo: journalLines.memo,
+      account_name: accounts.name,
+    })
+    .from(journalLines)
+    .leftJoin(accounts, eq(accounts.id, journalLines.accountId))
+    .where(inArray(journalLines.transactionId, txIds))
   const byTx = new Map<number, any[]>()
-  for (const r of linesRows.rows as any[]) {
+  for (const r of lineRows as any[]) {
     const arr = byTx.get(Number(r.transaction_id)) ?? []
     arr.push({
       id: Number(r.id),

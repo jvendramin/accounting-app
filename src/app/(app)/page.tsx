@@ -1,17 +1,14 @@
 "use client"
 
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import {
-  Bar,
-  BarChart,
-  CartesianGrid,
-  Line,
-  LineChart,
-  ResponsiveContainer,
-  Tooltip,
-  XAxis,
-  YAxis,
-} from "recharts"
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card"
+import { BarChart } from "@/components/ui/bar-chart"
+import { LineChart } from "@/components/ui/line-chart"
 import { useCachedFetch } from "@/hooks/use-cached-fetch"
 import { api } from "@/lib/api"
 import { fmtMoney } from "@/lib/format"
@@ -27,19 +24,19 @@ type Cash = {
   monthly: Array<{ month: string; net: number; inflow: number; outflow: number }>
 }
 
+const formatCompact = (v: number) =>
+  new Intl.NumberFormat("en-US", { notation: "compact", compactDisplay: "short" }).format(v)
+
 export default function DashboardPage() {
-  const pnlQ = useCachedFetch<PnL>(
-    "dashboard:reports/profit_and_loss",
-    () => api.get("/api/reports/profit_and_loss"),
+  const pnlQ = useCachedFetch<PnL>("dashboard:reports/profit_and_loss", () =>
+    api.get("/api/reports/profit_and_loss"),
   )
-  const cashQ = useCachedFetch<Cash>(
-    "dashboard:reports/cashflow",
-    () => api.get("/api/reports/cashflow"),
+  const cashQ = useCachedFetch<Cash>("dashboard:reports/cashflow", () =>
+    api.get("/api/reports/cashflow"),
   )
 
   const pnl = pnlQ.data
   const cash = cashQ.data
-  const loading = (pnlQ.loading && !pnl) || (cashQ.loading && !cash)
 
   const Stat = ({ label, value }: { label: string; value: string }) => (
     <Card>
@@ -48,9 +45,7 @@ export default function DashboardPage() {
           {label}
         </CardTitle>
       </CardHeader>
-      <CardContent className="text-2xl font-semibold">
-        {loading ? <span className="text-muted-fg">…</span> : value}
-      </CardContent>
+      <CardContent className="text-2xl font-semibold">{value}</CardContent>
     </Card>
   )
 
@@ -61,47 +56,43 @@ export default function DashboardPage() {
         <Stat label="Expenses" value={fmtMoney(pnl?.total_expense ?? 0)} />
         <Stat label="Net Income" value={fmtMoney(pnl?.net_income ?? 0)} />
       </div>
+
       <div className="grid gap-4 md:grid-cols-2">
         <Card>
           <CardHeader>
             <CardTitle>Income vs Expense</CardTitle>
+            <CardDescription>Monthly totals from journal lines.</CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="h-[280px] w-full">
-              <ResponsiveContainer>
-                <BarChart data={pnl?.monthly ?? []}>
-                  <CartesianGrid vertical={false} />
-                  <XAxis dataKey="month" tickLine={false} axisLine={false} />
-                  <YAxis tickLine={false} axisLine={false} />
-                  <Tooltip />
-                  <Bar dataKey="income" fill="#22c55e" radius={4} />
-                  <Bar dataKey="expense" fill="#ef4444" radius={4} />
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
+            <BarChart
+              containerHeight={280}
+              data={pnl?.monthly ?? []}
+              dataKey="month"
+              valueFormatter={formatCompact}
+              xAxisProps={{ interval: 0 }}
+              config={{
+                income: { label: "Income", color: "var(--color-emerald-500)" },
+                expense: { label: "Expense", color: "var(--color-red-500)" },
+              }}
+            />
           </CardContent>
         </Card>
+
         <Card>
           <CardHeader>
             <CardTitle>Cashflow</CardTitle>
+            <CardDescription>Net cash movement per month.</CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="h-[280px] w-full">
-              <ResponsiveContainer>
-                <LineChart data={cash?.monthly ?? []}>
-                  <CartesianGrid vertical={false} />
-                  <XAxis dataKey="month" tickLine={false} axisLine={false} />
-                  <YAxis tickLine={false} axisLine={false} />
-                  <Tooltip />
-                  <Line
-                    dataKey="net"
-                    stroke="#3b82f6"
-                    strokeWidth={2}
-                    dot={false}
-                  />
-                </LineChart>
-              </ResponsiveContainer>
-            </div>
+            <LineChart
+              containerHeight={280}
+              data={cash?.monthly ?? []}
+              dataKey="month"
+              valueFormatter={formatCompact}
+              config={{
+                net: { label: "Net", color: "var(--color-sky-500)" },
+              }}
+            />
           </CardContent>
         </Card>
       </div>

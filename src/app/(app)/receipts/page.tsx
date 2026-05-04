@@ -1,7 +1,8 @@
 "use client"
 
-import { useState } from "react"
+import { useMemo, useState } from "react"
 import { TableBody } from "react-aria-components"
+import { EllipsisVerticalIcon } from "@heroicons/react/16/solid"
 import {
   Table,
   TableCell,
@@ -12,7 +13,14 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { FileTrigger } from "@/components/ui/file-trigger"
-import { IconPlus, IconTrash } from "@/components/icons"
+import {
+  Menu,
+  MenuContent,
+  MenuItem,
+  MenuSeparator,
+  MenuTrigger,
+} from "@/components/ui/menu"
+import { IconPlus } from "@/components/icons"
 import { toast } from "sonner"
 import { auth } from "@/lib/auth"
 import { api, type Receipt } from "@/lib/api"
@@ -26,8 +34,24 @@ export default function ReceiptsPage() {
   const { data, refetch } = useCachedFetch<Receipt[]>(key, () =>
     api.get("/api/receipts", userSub ? { user_sub: userSub } : {}),
   )
-  const rows = data ?? []
+  const rawRows = data ?? []
   const [busy, setBusy] = useState(false)
+  const [sortDescriptor, setSortDescriptor] = useState<{
+    column: string
+    direction: "ascending" | "descending"
+  }>({ column: "created_at", direction: "descending" })
+  const rows = useMemo(() => {
+    const { column, direction } = sortDescriptor
+    return [...rawRows].sort((a, b) => {
+      const av: any = (a as any)[column] ?? ""
+      const bv: any = (b as any)[column] ?? ""
+      const cmp =
+        typeof av === "number" && typeof bv === "number"
+          ? av - bv
+          : String(av).localeCompare(String(bv))
+      return direction === "descending" ? -cmp : cmp
+    })
+  }, [rawRows, sortDescriptor])
 
   const upload = async (files: FileList | null) => {
     if (!files || files.length === 0) return
@@ -87,13 +111,30 @@ export default function ReceiptsPage() {
         </FileTrigger>
       </CardHeader>
       <CardContent className="flex-1 overflow-auto p-0">
-        <Table aria-label="Receipts">
+        <Table
+          allowResize
+          aria-label="Receipts"
+          sortDescriptor={sortDescriptor}
+          onSortChange={(d) =>
+            setSortDescriptor(d as { column: string; direction: "ascending" | "descending" })
+          }
+        >
           <IntentTableHeader>
-            <TableColumn id="filename" isRowHeader>File</TableColumn>
-            <TableColumn id="size">Size</TableColumn>
-            <TableColumn id="type">Type</TableColumn>
-            <TableColumn id="date">Uploaded</TableColumn>
-            <TableColumn id="act">{""}</TableColumn>
+            <TableColumn id="filename" isRowHeader allowsSorting isResizable className="w-full">
+              File
+            </TableColumn>
+            <TableColumn id="byte_size" allowsSorting>
+              Size
+            </TableColumn>
+            <TableColumn id="content_type" allowsSorting isResizable>
+              Type
+            </TableColumn>
+            <TableColumn id="created_at" allowsSorting>
+              Uploaded
+            </TableColumn>
+            <TableColumn id="actions" width={56} minWidth={56} maxWidth={56}>
+              {""}
+            </TableColumn>
           </IntentTableHeader>
           <TableBody
             items={rows}
@@ -114,9 +155,18 @@ export default function ReceiptsPage() {
                   {r.created_at ? new Date(r.created_at).toLocaleDateString() : "—"}
                 </TableCell>
                 <TableCell>
-                  <Button intent="plain" size="sq-sm" onPress={() => remove(r.id)}>
-                    <IconTrash />
-                  </Button>
+                  <div className="flex justify-end">
+                    <Menu>
+                      <MenuTrigger className="size-6">
+                        <EllipsisVerticalIcon />
+                      </MenuTrigger>
+                      <MenuContent aria-label="Actions" placement="left top">
+                        <MenuItem intent="danger" onAction={() => remove(r.id)}>
+                          Delete
+                        </MenuItem>
+                      </MenuContent>
+                    </Menu>
+                  </div>
                 </TableCell>
               </TableRow>
             )}

@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react"
 import { TableBody } from "react-aria-components"
+import { EllipsisVerticalIcon } from "@heroicons/react/16/solid"
 import {
   Table,
   TableCell,
@@ -10,9 +11,17 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import { Button } from "@/components/ui/button"
+import { SearchField, SearchInput } from "@/components/ui/search-field"
 import { TextField } from "@/components/ui/text-field"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/field"
+import {
+  Menu,
+  MenuContent,
+  MenuItem,
+  MenuSeparator,
+  MenuTrigger,
+} from "@/components/ui/menu"
 import {
   Select,
   SelectContent,
@@ -28,7 +37,7 @@ import {
 } from "@/components/ui/modal"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group"
+import { Tab, TabList, Tabs } from "@/components/ui/tabs"
 import { IconPlus, IconTrash } from "@/components/icons"
 import { toast } from "sonner"
 import { fmtMoney, titleCase } from "@/lib/format"
@@ -83,10 +92,16 @@ const useDebouncedValue = <T,>(v: T, ms: number) => {
   return d
 }
 
+type SortDesc = { column: string; direction: "ascending" | "descending" }
+
 export default function TransactionsPage() {
   const [q, setQ] = useState("")
   const [type, setType] = useState("all")
   const debouncedQ = useDebouncedValue(q, 250)
+  const [sortDescriptor, setSortDescriptor] = useState<SortDesc>({
+    column: "date",
+    direction: "descending",
+  })
 
   const txKey = `transactions:q=${debouncedQ}|type=${type}`
   const {
@@ -99,7 +114,19 @@ export default function TransactionsPage() {
       ...(type !== "all" ? { type } : {}),
     }),
   )
-  const rows = rowsData ?? []
+  const rawRows = rowsData ?? []
+  const rows = useMemo(() => {
+    const { column, direction } = sortDescriptor
+    return [...rawRows].sort((a, b) => {
+      const av: any = (a as any)[column] ?? (column === "transaction_type" ? (a as any).transactionType : "")
+      const bv: any = (b as any)[column] ?? (column === "transaction_type" ? (b as any).transactionType : "")
+      const cmp =
+        typeof av === "number" && typeof bv === "number"
+          ? av - bv
+          : String(av).localeCompare(String(bv))
+      return direction === "descending" ? -cmp : cmp
+    })
+  }, [rawRows, sortDescriptor])
   const loading = txLoading && rowsData === undefined
 
   const { data: accountsData } = useCachedFetch<Account[]>(
@@ -324,14 +351,14 @@ export default function TransactionsPage() {
         <CardHeader className="flex w-full flex-col items-stretch gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
           <CardTitle>Transactions</CardTitle>
           <div className="flex flex-wrap items-center gap-2.5 w-full sm:w-auto">
-            <TextField
+            <SearchField
               aria-label="Search"
               value={q}
               onChange={setQ}
               className="w-full sm:w-72"
             >
-              <Input placeholder="Search..." />
-            </TextField>
+              <SearchInput placeholder="Search..." />
+            </SearchField>
             <Select
               aria-label="Type"
               selectedKey={type}
@@ -354,14 +381,31 @@ export default function TransactionsPage() {
           </div>
         </CardHeader>
         <CardContent className="flex-1 overflow-auto p-0">
-          <Table aria-label="Transactions">
+          <Table
+            allowResize
+            aria-label="Transactions"
+            sortDescriptor={sortDescriptor}
+            onSortChange={(d) => setSortDescriptor(d as SortDesc)}
+          >
             <IntentTableHeader>
-              <TableColumn id="date" isRowHeader>Date</TableColumn>
-              <TableColumn id="desc">Description</TableColumn>
-              <TableColumn id="ref">Reference</TableColumn>
-              <TableColumn id="type">Type</TableColumn>
-              <TableColumn id="amt">Amount</TableColumn>
-              <TableColumn id="act">{""}</TableColumn>
+              <TableColumn id="date" isRowHeader allowsSorting>
+                Date
+              </TableColumn>
+              <TableColumn id="description" allowsSorting isResizable className="w-full">
+                Description
+              </TableColumn>
+              <TableColumn id="reference" allowsSorting isResizable>
+                Reference
+              </TableColumn>
+              <TableColumn id="transaction_type" allowsSorting>
+                Type
+              </TableColumn>
+              <TableColumn id="amount" allowsSorting>
+                Amount
+              </TableColumn>
+              <TableColumn id="actions" width={56} minWidth={56} maxWidth={56}>
+                {""}
+              </TableColumn>
             </IntentTableHeader>
             <TableBody
               items={rows}
@@ -387,9 +431,23 @@ export default function TransactionsPage() {
                       {fmtMoney(Number(t.amount))}
                     </TableCell>
                     <TableCell>
-                      <Button intent="plain" size="sq-sm" onPress={() => remove(t.id)}>
-                        <IconTrash />
-                      </Button>
+                      <div className="flex justify-end">
+                        <Menu>
+                          <MenuTrigger className="size-6">
+                            <EllipsisVerticalIcon />
+                          </MenuTrigger>
+                          <MenuContent aria-label="Actions" placement="left top">
+                            <MenuItem onAction={() => editTxn(t)}>Edit</MenuItem>
+                            <MenuSeparator />
+                            <MenuItem
+                              intent="danger"
+                              onAction={() => remove(t.id)}
+                            >
+                              Delete
+                            </MenuItem>
+                          </MenuContent>
+                        </Menu>
+                      </div>
                     </TableCell>
                   </TableRow>
                 )
@@ -406,26 +464,26 @@ export default function TransactionsPage() {
           if (!v) resetForms()
         }}
       >
-        <ModalContent size="3xl">
+        <ModalContent
+          size="3xl"
+          className="h-[min(720px,calc(100dvh-2rem))] sm:h-[720px]"
+        >
           <ModalHeader>
             <ModalTitle>
               {editingId ? "Edit Transaction" : "Add Transaction"}
             </ModalTitle>
           </ModalHeader>
           <div className="px-6 pt-2">
-            <ToggleGroup
-              selectionMode="single"
-              selectedKeys={new Set([tab])}
-              onSelectionChange={(keys) => {
-                const v = (keys as Set<string>).values().next().value
-                if (v) setTab(v as "simple" | "journal")
-              }}
+            <Tabs
+              selectedKey={tab}
+              onSelectionChange={(k) => setTab(k as "simple" | "journal")}
               aria-label="Transaction type"
-              className="w-full"
             >
-              <ToggleGroupItem id="simple">Deposit / Withdrawal</ToggleGroupItem>
-              <ToggleGroupItem id="journal">Journal Entry</ToggleGroupItem>
-            </ToggleGroup>
+              <TabList>
+                <Tab id="simple">Deposit / Withdrawal</Tab>
+                <Tab id="journal">Journal Entry</Tab>
+              </TabList>
+            </Tabs>
           </div>
           <div className="min-h-0 flex-1 overflow-y-auto px-6 py-4">
             {tab === "simple" ? (

@@ -15,7 +15,26 @@ import {
   SidebarTrigger,
 } from "@/components/ui/sidebar"
 import { Separator } from "@/components/ui/separator"
+import { Avatar } from "@/components/ui/avatar"
+import {
+  Menu,
+  MenuContent,
+  MenuHeader,
+  MenuItem,
+  MenuLabel,
+  MenuSection,
+  MenuSeparator,
+  MenuShortcut,
+  MenuTrigger,
+} from "@/components/ui/menu"
+import { ChevronUpDownIcon } from "@heroicons/react/24/outline"
+import {
+  SunIcon,
+  MoonIcon,
+  ComputerDesktopIcon,
+} from "@heroicons/react/24/outline"
 import { auth } from "@/lib/auth"
+import { useTheme } from "@/components/theme-provider"
 import {
   IconCircleQuestionmark,
   IconChartBar,
@@ -45,10 +64,12 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const title = titles[pathname] ?? "Books"
   const session = auth.useSession()
   const user = session.data?.user
+  const { theme, setTheme } = useTheme()
+  const initials = (user?.email ?? "?").slice(0, 2).toUpperCase()
 
   return (
     <SidebarProvider>
-      <Sidebar>
+      <Sidebar intent="inset" collapsible="dock">
         <SidebarHeader>
           <SidebarLabel className="font-semibold">Books</SidebarLabel>
         </SidebarHeader>
@@ -111,19 +132,76 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           </SidebarSectionGroup>
         </SidebarContent>
         <SidebarFooter>
-          <button
-            type="button"
-            onClick={() => auth.signOut()}
-            className="flex w-full items-center gap-2 rounded-md p-2 text-sm hover:bg-accent"
-          >
-            <IconLogout className="size-4" />
-            <span className="truncate">{user?.email ?? "Sign out"}</span>
-          </button>
+          <Menu>
+            <MenuTrigger
+              className="flex w-full items-center justify-between rounded-md p-2 hover:bg-sidebar-accent"
+              aria-label="Account"
+            >
+              <div className="flex items-center gap-x-2 min-w-0">
+                <Avatar isSquare className="size-7 *:size-7" alt={user?.email ?? ""}>
+                  <span className="grid place-items-center bg-primary text-primary-fg text-[10px] font-semibold size-full rounded">
+                    {initials}
+                  </span>
+                </Avatar>
+                <div className="text-sm leading-tight min-w-0 in-data-[collapsible=dock]:hidden">
+                  <SidebarLabel className="truncate">
+                    {user?.name ?? user?.email}
+                  </SidebarLabel>
+                  {user?.name && (
+                    <span className="block truncate text-xs text-muted-fg">
+                      {user.email}
+                    </span>
+                  )}
+                </div>
+              </div>
+              <ChevronUpDownIcon
+                data-slot="chevron"
+                className="size-4 opacity-60 in-data-[collapsible=dock]:hidden"
+              />
+            </MenuTrigger>
+            <MenuContent
+              placement="top end"
+              className="min-w-(--trigger-width) sm:min-w-56"
+            >
+              {user && (
+                <MenuSection>
+                  <MenuHeader separator>
+                    <span className="block">{user.name ?? user.email}</span>
+                    {user.name && (
+                      <span className="font-normal text-muted-fg">
+                        {user.email}
+                      </span>
+                    )}
+                  </MenuHeader>
+                </MenuSection>
+              )}
+              <MenuItem onAction={() => setTheme("light")}>
+                <SunIcon />
+                <MenuLabel>Light</MenuLabel>
+                {theme === "light" && <MenuShortcut>✓</MenuShortcut>}
+              </MenuItem>
+              <MenuItem onAction={() => setTheme("dark")}>
+                <MoonIcon />
+                <MenuLabel>Dark</MenuLabel>
+                {theme === "dark" && <MenuShortcut>✓</MenuShortcut>}
+              </MenuItem>
+              <MenuItem onAction={() => setTheme("system")}>
+                <ComputerDesktopIcon />
+                <MenuLabel>System</MenuLabel>
+                {theme === "system" && <MenuShortcut>✓</MenuShortcut>}
+              </MenuItem>
+              <MenuSeparator />
+              <MenuItem intent="danger" onAction={() => auth.signOut()}>
+                <IconLogout />
+                Sign out
+              </MenuItem>
+            </MenuContent>
+          </Menu>
         </SidebarFooter>
         <SidebarRail />
       </Sidebar>
       <SidebarInset>
-        <header className="sticky top-0 z-10 flex h-14 items-center gap-3 bg-bg px-4">
+        <header className="sticky top-0 z-10 flex h-14 items-center gap-3 px-4">
           <SidebarTrigger />
           <Separator orientation="vertical" className="h-5" />
           <h1 className="text-sm font-medium">{title}</h1>
