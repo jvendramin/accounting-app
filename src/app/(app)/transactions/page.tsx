@@ -44,7 +44,7 @@ import {
   DateRangePickerTrigger,
 } from "@/components/ui/date-range-picker"
 import { parseDate, type CalendarDate } from "@internationalized/date"
-import { IconPlus, IconTrash } from "@/components/icons"
+import { IconPlus, IconTrash, IconX } from "@/components/icons"
 import { toast } from "sonner"
 import { fmtMoney, titleCase } from "@/lib/format"
 import { api, type Account, type Txn } from "@/lib/api"
@@ -385,21 +385,36 @@ export default function TransactionsPage() {
                 ))}
               </SelectContent>
             </Select>
-            <DateRangePicker
-              aria-label="Date range"
-              className="w-[280px]"
-              value={
-                from && to
-                  ? { start: parseDate(from), end: parseDate(to) }
-                  : null
-              }
-              onChange={(v) => {
-                setFrom(v ? v.start.toString() : "")
-                setTo(v ? v.end.toString() : "")
-              }}
-            >
-              <DateRangePickerTrigger />
-            </DateRangePicker>
+            <div className="flex items-center gap-1">
+              <DateRangePicker
+                aria-label="Date range"
+                className="w-[280px]"
+                value={
+                  from && to
+                    ? { start: parseDate(from), end: parseDate(to) }
+                    : null
+                }
+                onChange={(v) => {
+                  setFrom(v ? v.start.toString() : "")
+                  setTo(v ? v.end.toString() : "")
+                }}
+              >
+                <DateRangePickerTrigger />
+              </DateRangePicker>
+              {(from || to) && (
+                <Button
+                  intent="plain"
+                  size="sq-sm"
+                  aria-label="Clear date range"
+                  onPress={() => {
+                    setFrom("")
+                    setTo("")
+                  }}
+                >
+                  <IconX />
+                </Button>
+              )}
+            </div>
             <Button onPress={newTxn}>
               <IconPlus /> New
             </Button>
