@@ -13,10 +13,9 @@ Next.js 16 + Intent UI port of the Vite/Rails app at `../accounting-app/`.
 | Neon Auth client wired (same as Vite app) | ✅ |
 | `(app)` route group with AuthGate + Sidebar shell | ✅ |
 | Login form (Intent UI `TextField` / `Button`) | ✅ |
-| API routes: accounts CRUD + bulk, transactions CRUD + bulk, three reports | ✅ |
-| Worked page: **Accounts** (Intent UI Table, Modal, Select) | ✅ |
-| Stub pages: Dashboard, Transactions, Receipts, Import, 3 Reports | ⏳ |
-| Receipts S3 presign endpoint | ⏳ |
+| API routes: accounts CRUD + bulk, transactions CRUD + bulk + bulk_create, all reports | ✅ |
+| API routes: receipts CRUD + S3 presign | ✅ |
+| Pages: Dashboard, Accounts, Transactions, Receipts, Import, all 3 Reports | ✅ |
 
 ## Run
 

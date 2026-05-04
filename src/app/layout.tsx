@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import localFont from "next/font/local";
-import { ThemeProvider } from "@/components/theme-provider";
+import { ThemeProvider, themeBootstrapScript } from "@/components/theme-provider";
 import { Toaster } from "sonner";
 
 const fontSans = localFont({
@@ -44,6 +44,9 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" suppressHydrationWarning>
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: themeBootstrapScript }} />
+      </head>
       <body className={`${fontSans.variable} ${fontMono.variable} antialiased`}>
         <ThemeProvider>
           {children}

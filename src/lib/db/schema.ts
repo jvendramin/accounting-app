@@ -1,5 +1,6 @@
 import { relations } from "drizzle-orm"
 import {
+  bigint,
   bigserial,
   date,
   numeric,
@@ -44,8 +45,8 @@ export const transactions = pgTable("transactions", {
 
 export const journalLines = pgTable("journal_lines", {
   id: bigserial("id", { mode: "number" }).primaryKey(),
-  transactionId: bigserial("transaction_id", { mode: "number" }).notNull(),
-  accountId: bigserial("account_id", { mode: "number" }).notNull(),
+  transactionId: bigint("transaction_id", { mode: "number" }).notNull(),
+  accountId: bigint("account_id", { mode: "number" }).notNull(),
   debit: numeric("debit", { precision: 14, scale: 2 }).default("0").notNull(),
   credit: numeric("credit", { precision: 14, scale: 2 }).default("0").notNull(),
   memo: text("memo"),
@@ -59,10 +60,10 @@ export const journalLines = pgTable("journal_lines", {
 
 export const receipts = pgTable("receipts", {
   id: bigserial("id", { mode: "number" }).primaryKey(),
-  transactionId: bigserial("transaction_id", { mode: "number" }),
+  transactionId: bigint("transaction_id", { mode: "number" }),
   filename: varchar("filename"),
   contentType: varchar("content_type"),
-  byteSize: bigserial("byte_size", { mode: "number" }),
+  byteSize: bigint("byte_size", { mode: "number" }),
   storageKey: varchar("storage_key"),
   uploaderSub: varchar("uploader_sub"),
   createdAt: timestamp("created_at", { precision: 6, mode: "date" })
