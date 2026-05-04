@@ -158,6 +158,7 @@ export default function TransactionsPage() {
   )
 
   const [open, setOpen] = useState(false)
+  const [showFilters, setShowFilters] = useState(false)
   const [tab, setTab] = useState<"simple" | "journal">("simple")
   const [editingId, setEditingId] = useState<number | null>(null)
   const [simple, setSimple] = useState<SimpleForm>({
@@ -359,8 +360,28 @@ export default function TransactionsPage() {
     <div className="flex h-full min-h-0 flex-col gap-4">
       <Card className="flex flex-1 min-h-0 flex-col">
         <CardHeader className="flex w-full flex-col items-stretch gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
-          <CardTitle>Transactions</CardTitle>
-          <div className="flex flex-wrap items-center gap-2.5 w-full sm:w-auto">
+          <div className="flex items-center justify-between gap-2 sm:contents">
+            <CardTitle>Transactions</CardTitle>
+            <div className="flex items-center gap-2 sm:hidden">
+              <Button
+                intent="outline"
+                size="sm"
+                onPress={() => setShowFilters((s) => !s)}
+                aria-expanded={showFilters}
+              >
+                {showFilters ? "Hide" : "Filters"}
+              </Button>
+              <Button size="sm" onPress={newTxn}>
+                <IconPlus />
+              </Button>
+            </div>
+          </div>
+          <div
+            className={
+              "flex flex-wrap items-center gap-2.5 w-full sm:w-auto " +
+              (showFilters ? "flex" : "hidden sm:flex")
+            }
+          >
             <SearchField
               aria-label="Search"
               value={q}
@@ -415,12 +436,12 @@ export default function TransactionsPage() {
                 </Button>
               )}
             </div>
-            <Button onPress={newTxn}>
+            <Button onPress={newTxn} className="hidden sm:inline-flex">
               <IconPlus /> New
             </Button>
           </div>
         </CardHeader>
-        <CardContent className="flex-1 overflow-auto p-0">
+        <CardContent className="flex-1 overflow-auto p-0 [&_table]:min-w-[720px]">
           <Table
             allowResize
             aria-label="Transactions"

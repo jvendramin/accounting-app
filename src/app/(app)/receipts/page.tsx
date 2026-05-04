@@ -110,7 +110,7 @@ export default function ReceiptsPage() {
           </Button>
         </FileTrigger>
       </CardHeader>
-      <CardContent className="flex-1 overflow-auto p-0">
+      <CardContent className="flex-1 overflow-auto p-0 [&_table]:min-w-[640px]">
         <Table
           allowResize
           aria-label="Receipts"
