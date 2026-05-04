@@ -9,8 +9,8 @@ import {
   type RowSelectionState,
 } from "@tanstack/react-table"
 import { api, type Account } from "@/lib/api"
-import { withMinDelay } from "@/lib/loading"
 import { fmtMoney, titleCase } from "@/lib/format"
+import { invalidateCache, useCachedFetch } from "@/hooks/use-cached-fetch"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -71,26 +71,22 @@ function ActionsCell<T extends { id: number | string }>({
 const TYPES = ["asset", "liability", "equity", "income", "expense"] as const
 
 export default function Accounts() {
-  const [rows, setRows] = useState<Account[]>([])
-  const [loading, setLoading] = useState(true)
   const [editing, setEditing] = useState<Partial<Account> | null>(null)
   const [open, setOpen] = useState(false)
   const [rowSelection, setRowSelection] = useState<RowSelectionState>({})
-  const [pagination, setPagination] = useState<PaginationState>({ pageIndex: 0, pageSize: 25 })
+  const [pagination, setPagination] = useState<PaginationState>({ pageIndex: 0, pageSize: 50 })
   const [q, setQ] = useState("")
   const [typeFilter, setTypeFilter] = useState<string>("all")
-  const { ref: panelRef, pageSize: autoPageSize } = useAutoFitPageSize(44, 40)
-  useEffect(() => {
-    setPagination((p) => (p.pageSize === autoPageSize ? p : { ...p, pageSize: autoPageSize }))
-  }, [autoPageSize])
+  const { ref: panelRef } = useAutoFitPageSize(44, 40)
 
-  const load = () => {
-    setLoading(true)
-    withMinDelay(api.get("/accounts"), 1000)
-      .then((r) => setRows(r.data))
-      .finally(() => setLoading(false))
-  }
-  useEffect(() => { load() }, [])
+  const { data: rowsData, loading: rowsLoading, refetch: load } =
+    useCachedFetch<Account[]>(
+      "accounts:all",
+      () => api.get("/accounts").then((r) => r.data as Account[]),
+    )
+  const rows = useMemo(() => rowsData ?? [], [rowsData])
+  // Skeleton only on initial load (no cache yet); revalidation is silent.
+  const loading = rowsLoading && rowsData === undefined
 
   const save = async () => {
     if (!editing?.name || !editing?.account_type) {
@@ -100,7 +96,7 @@ export default function Accounts() {
     try {
       if (editing.id) await api.put(`/accounts/${editing.id}`, { account: editing })
       else await api.post("/accounts", { account: editing })
-      setOpen(false); setEditing(null); load()
+      setOpen(false); setEditing(null); invalidateCache("accounts:all"); load()
       toast.success(wasUpdate ? "Account updated" : "Account created")
     } catch (e: any) { toast.error(e.message) }
   }
@@ -109,7 +105,7 @@ export default function Accounts() {
     if (!confirm("Delete this account?")) return
     try {
       await api.delete(`/accounts/${id}`)
-      load()
+      invalidateCache("accounts:all"); load()
       toast.error("Account deleted")
     } catch (e: any) {
       toast.error(e.response?.data?.error || e.message)
@@ -199,7 +195,7 @@ export default function Accounts() {
     const n = selectedCount
     try {
       await api.post("/accounts/bulk_destroy", { ids: selectedIds })
-      setRowSelection({}); load()
+      setRowSelection({}); invalidateCache("accounts:all"); load()
       toast.error(`${n} account${n === 1 ? "" : "s"} deleted`)
     } catch (e: any) {
       toast.error(e.response?.data?.error || e.message)
@@ -250,6 +246,7 @@ export default function Accounts() {
         recordCount={filteredRows.length}
         isLoading={loading && rows.length === 0}
         loadingMode="skeleton"
+        onRowDoubleClick={(r) => { setEditing(r); setOpen(true) }}
         tableLayout={{
           columnsPinnable: true,
           columnsResizable: false,

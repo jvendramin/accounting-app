@@ -103,3 +103,22 @@ export function invalidateCache(...keys: string[]) {
     }
   }
 }
+
+/**
+ * Invalidate every cache entry whose key starts with `prefix`. Useful when a
+ * resource is cached per-filter (e.g. `transactions:q=foo&type=deposit`) and a
+ * mutation should bust every variant at once.
+ */
+export function invalidateCachePrefix(prefix: string) {
+  for (const key of Array.from(memCache.keys())) {
+    if (key.startsWith(prefix)) memCache.delete(key)
+  }
+  try {
+    for (let i = sessionStorage.length - 1; i >= 0; i--) {
+      const key = sessionStorage.key(i)
+      if (key && key.startsWith(prefix)) sessionStorage.removeItem(key)
+    }
+  } catch {
+    /* ignore */
+  }
+}

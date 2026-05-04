@@ -118,7 +118,7 @@ export default function ImportPage() {
   const [defaultAccountId, setDefaultAccountId] = useState<string>("csv")
   const [editing, setEditing] = useState<PendingTxn | null>(null)
   const [submitting, setSubmitting] = useState(false)
-  const [pagination, setPagination] = useState<PaginationState>({ pageIndex: 0, pageSize: 25 })
+  const [pagination, setPagination] = useState<PaginationState>({ pageIndex: 0, pageSize: 50 })
 
   useEffect(() => {
     api.get("/accounts").then((r) => setAccounts(r.data))

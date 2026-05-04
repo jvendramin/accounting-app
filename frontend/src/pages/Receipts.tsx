@@ -82,11 +82,8 @@ export default function Receipts() {
   const [rows, setRows] = useState<Receipt[]>([])
   const [loading, setLoading] = useState(true)
   const [q, setQ] = useState("")
-  const [pagination, setPagination] = useState<PaginationState>({ pageIndex: 0, pageSize: 25 })
-  const { ref: panelRef, pageSize: autoPageSize } = useAutoFitPageSize(44, 40)
-  useEffect(() => {
-    setPagination((p) => (p.pageSize === autoPageSize ? p : { ...p, pageSize: autoPageSize }))
-  }, [autoPageSize])
+  const [pagination, setPagination] = useState<PaginationState>({ pageIndex: 0, pageSize: 50 })
+  const { ref: panelRef } = useAutoFitPageSize(44, 40)
 
   const load = () => {
     setLoading(true)

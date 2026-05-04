@@ -68,6 +68,7 @@ export interface DataGridProps<TData extends object> {
   recordCount: number
   children?: ReactNode
   onRowClick?: (row: TData) => void
+  onRowDoubleClick?: (row: TData) => void
   isLoading?: boolean
   loadingMode?: "skeleton" | "spinner"
   loadingMessage?: ReactNode | string
@@ -154,6 +155,7 @@ function DataGridProvider<TData extends object>({
       props.allRowsLoadedMessage,
       props.emptyMessage,
       props.onRowClick,
+      props.onRowDoubleClick,
       props.className,
       // eslint-disable-next-line react-hooks/exhaustive-deps
       JSON.stringify(props.tableLayout),

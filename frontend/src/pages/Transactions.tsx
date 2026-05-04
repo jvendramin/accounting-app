@@ -59,7 +59,11 @@ import {
   FloatingToolbarSeparator,
 } from "@/components/floating-toolbar"
 import { useAutoFitPageSize } from "@/hooks/use-auto-fit-page-size"
-import { invalidateCache } from "@/hooks/use-cached-fetch"
+import {
+  invalidateCache,
+  invalidateCachePrefix,
+  useCachedFetch,
+} from "@/hooks/use-cached-fetch"
 
 const DASHBOARD_CACHE_KEYS = [
   "dashboard:reports/profit_and_loss",
@@ -130,9 +134,6 @@ const today = () => new Date().toISOString().slice(0, 10)
 const dateToIso = (d?: Date) => (d ? format(d, "yyyy-MM-dd") : "")
 
 export default function Transactions() {
-  const [rows, setRows] = useState<Txn[]>([])
-  const [accounts, setAccounts] = useState<Account[]>([])
-  const [loading, setLoading] = useState(true)
   const [q, setQ] = useState("")
   const [type, setType] = useState<string>("all")
   const [from, setFrom] = useState("")
@@ -140,11 +141,8 @@ export default function Transactions() {
   const [rangeValue, setRangeValue] = useState<DateSelectorValue | undefined>()
 
   const [rowSelection, setRowSelection] = useState<RowSelectionState>({})
-  const [pagination, setPagination] = useState<PaginationState>({ pageIndex: 0, pageSize: 25 })
-  const { ref: panelRef, pageSize: autoPageSize } = useAutoFitPageSize(44, 40)
-  useEffect(() => {
-    setPagination((p) => (p.pageSize === autoPageSize ? p : { ...p, pageSize: autoPageSize }))
-  }, [autoPageSize])
+  const [pagination, setPagination] = useState<PaginationState>({ pageIndex: 0, pageSize: 50 })
+  const { ref: panelRef } = useAutoFitPageSize(44, 40)
 
   const [open, setOpen] = useState(false)
   const [tab, setTab] = useState<"simple" | "journal">("simple")
@@ -162,41 +160,33 @@ export default function Transactions() {
 
   const debouncedQ = useDebouncedValue(q, 250)
 
-  const load = (signal?: AbortSignal) => {
-    setLoading(true)
-    const params: any = {}
-    if (debouncedQ) params.q = debouncedQ
-    if (type !== "all") params.type = type
-    if (from) params.from = from
-    if (to) params.to = to
-    return api
-      .get("/transactions", { params, signal })
-      .then((r) => setRows(r.data))
-      .catch((e) => {
-        if (e?.code !== "ERR_CANCELED" && e?.name !== "CanceledError") throw e
-      })
-      .finally(() => {
-        if (!signal?.aborted) setLoading(false)
-      })
-  }
+  const txKey = `transactions:q=${debouncedQ}|type=${type}|from=${from}|to=${to}`
 
-  useEffect(() => {
-    const ac = new AbortController()
-    load(ac.signal)
-    return () => ac.abort()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [debouncedQ, type, from, to])
+  const { data: rowsData, loading: txLoading, refetch: refetchTxns } =
+    useCachedFetch<Txn[]>(
+      txKey,
+      () =>
+        api
+          .get("/transactions", {
+            params: {
+              ...(debouncedQ ? { q: debouncedQ } : {}),
+              ...(type !== "all" ? { type } : {}),
+              ...(from ? { from } : {}),
+              ...(to ? { to } : {}),
+            },
+          })
+          .then((r) => r.data as Txn[]),
+    )
+  const rows = rowsData ?? []
+  // Only show skeleton on the very first load (no cached data yet); silent
+  // background revalidation otherwise so navigating back doesn't flash.
+  const loading = txLoading && rowsData === undefined
 
-  useEffect(() => {
-    const ac = new AbortController()
-    api
-      .get("/accounts", { signal: ac.signal })
-      .then((r) => setAccounts(r.data))
-      .catch((e) => {
-        if (e?.code !== "ERR_CANCELED" && e?.name !== "CanceledError") throw e
-      })
-    return () => ac.abort()
-  }, [])
+  const { data: accountsData } = useCachedFetch<Account[]>(
+    "accounts:all",
+    () => api.get("/accounts").then((r) => r.data as Account[]),
+  )
+  const accounts = useMemo(() => accountsData ?? [], [accountsData])
 
   const cashAccounts = useMemo(
     () => accounts.filter((a) => a.account_type === "asset"),
@@ -317,8 +307,10 @@ export default function Transactions() {
     try {
       if (editingId) await api.put(`/transactions/${editingId}`, payload)
       else await api.post("/transactions", payload)
-      setOpen(false); resetForms(); load()
+      setOpen(false); resetForms()
+      invalidateCachePrefix("transactions:")
       invalidateCache(...DASHBOARD_CACHE_KEYS)
+      refetchTxns()
       toast.success(wasUpdate ? "Transaction updated" : "Transaction created")
     } catch (e: any) {
       toast.error(e.response?.data?.error || e.message)
@@ -329,8 +321,9 @@ export default function Transactions() {
     if (!confirm("Delete this transaction?")) return
     try {
       await api.delete(`/transactions/${id}`)
-      load()
+      invalidateCachePrefix("transactions:")
       invalidateCache(...DASHBOARD_CACHE_KEYS)
+      refetchTxns()
       toast.error("Transaction deleted")
     } catch (e: any) {
       toast.error(e.response?.data?.error || e.message)
@@ -420,8 +413,10 @@ export default function Transactions() {
     const n = selectedCount
     try {
       await api.post("/transactions/bulk_destroy", { ids: selectedIds })
-      setRowSelection({}); load()
+      setRowSelection({})
+      invalidateCachePrefix("transactions:")
       invalidateCache(...DASHBOARD_CACHE_KEYS)
+      refetchTxns()
       toast.error(`${n} transaction${n === 1 ? "" : "s"} deleted`)
     } catch (e: any) {
       toast.error(e.response?.data?.error || e.message)
@@ -458,6 +453,7 @@ export default function Transactions() {
         recordCount={rows.length}
         isLoading={loading && rows.length === 0}
         loadingMode="skeleton"
+        onRowDoubleClick={editTxn}
         tableLayout={{
           columnsPinnable: true,
           columnsResizable: false,
