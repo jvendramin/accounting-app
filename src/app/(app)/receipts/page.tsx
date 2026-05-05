@@ -118,6 +118,7 @@ export default function ReceiptsPage() {
           onSortChange={(d) =>
             setSortDescriptor(d as { column: string; direction: "ascending" | "descending" })
           }
+          className="[&_th:first-child]:ps-4 [&_td:first-child]:ps-4"
         >
           <IntentTableHeader>
             <TableColumn id="filename" isRowHeader allowsSorting isResizable className="w-full">

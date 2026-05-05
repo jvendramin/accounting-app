@@ -447,6 +447,7 @@ export default function TransactionsPage() {
             aria-label="Transactions"
             sortDescriptor={sortDescriptor}
             onSortChange={(d) => setSortDescriptor(d as SortDesc)}
+            className="[&_th:first-child]:ps-4 [&_td:first-child]:ps-4"
           >
             <IntentTableHeader>
               <TableColumn id="date" isRowHeader allowsSorting>

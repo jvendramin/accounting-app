@@ -179,6 +179,7 @@ export default function AccountsPage() {
             aria-label="Accounts"
             sortDescriptor={sortDescriptor}
             onSortChange={(d) => setSortDescriptor(d as SortDesc)}
+            className="[&_th:first-child]:ps-4 [&_td:first-child]:ps-4"
           >
             <IntentTableHeader>
               <TableColumn id="code" isRowHeader allowsSorting isResizable>
