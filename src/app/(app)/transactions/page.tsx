@@ -179,10 +179,9 @@ export default function TransactionsPage() {
           const src = JSON.parse(raw) as Txn
           setEditingId(null) // not editing — creating
           const today_ = today()
-          if (
-            src.transactionType === "journal_entry" ||
-            src.journal_lines.length !== 2
-          ) {
+          const txnType =
+            (src as any).transaction_type ?? src.transactionType
+          if (txnType === "journal_entry" || src.journal_lines.length !== 2) {
             setTab("journal")
             setJournal({
               date: today_,
@@ -196,8 +195,6 @@ export default function TransactionsPage() {
               })),
             })
           } else {
-            const txnType =
-              (src as any).transaction_type ?? src.transactionType
             const debitLine = src.journal_lines.find((l) => Number(l.debit) > 0)
             const creditLine = src.journal_lines.find((l) => Number(l.credit) > 0)
             const kind: SimpleKind =
