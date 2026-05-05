@@ -27,7 +27,25 @@ import {
 import { useRouter } from "next/navigation"
 import { useCachedFetch } from "@/hooks/use-cached-fetch"
 import { api } from "@/lib/api"
-import { fmtMoney } from "@/lib/format"
+import { fmtMoney, titleCase } from "@/lib/format"
+import { Badge } from "@/components/ui/badge"
+
+type Suggestion = {
+  id: number
+  date: string
+  description: string
+  reference: string | null
+  transaction_type: string
+  amount: number
+  journal_lines: Array<{
+    id?: number
+    account_id: number
+    account_name?: string
+    debit: number
+    credit: number
+    memo?: string | null
+  }>
+}
 
 type PnL = {
   total_income: number
@@ -53,6 +71,17 @@ export default function DashboardPage() {
   )
 
   const quickCreate = (path: string) => router.push(`${path}?new=1`)
+
+  const suggestionsQ = useCachedFetch<Suggestion[]>(
+    "dashboard:suggestions",
+    () => api.get("/api/transactions/suggestions"),
+  )
+  const suggestions = suggestionsQ.data ?? []
+
+  const cloneSuggestion = (s: Suggestion) => {
+    sessionStorage.setItem("clone-tx", JSON.stringify(s))
+    router.push("/transactions?clone=1")
+  }
 
   const pnl = pnlQ.data
   const cash = cashQ.data
@@ -103,6 +132,41 @@ export default function DashboardPage() {
         <Stat label="Expenses" value={fmtMoney(pnl?.total_expense ?? 0)} />
         <Stat label="Net Income" value={fmtMoney(pnl?.net_income ?? 0)} />
       </div>
+
+      {suggestions.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Recurring this week</CardTitle>
+            <CardDescription>
+              Transactions from the same week last month — one click to clone.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <ul className="grid gap-2">
+              {suggestions.map((s) => (
+                <li
+                  key={s.id}
+                  className="flex items-center justify-between gap-3 rounded-lg border p-3"
+                >
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-2">
+                      <span className="truncate font-medium">{s.description}</span>
+                      <Badge intent="secondary">{titleCase(s.transaction_type)}</Badge>
+                    </div>
+                    <div className="text-xs text-muted-fg font-mono">{s.date}</div>
+                  </div>
+                  <div className="text-right tabular-nums whitespace-nowrap">
+                    {fmtMoney(s.amount)}
+                  </div>
+                  <Button intent="outline" size="sm" onPress={() => cloneSuggestion(s)}>
+                    <IconPlus /> Clone
+                  </Button>
+                </li>
+              ))}
+            </ul>
+          </CardContent>
+        </Card>
+      )}
 
       <div className="grid gap-4 md:grid-cols-2">
         <Card>

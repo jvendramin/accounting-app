@@ -171,6 +171,56 @@ export default function TransactionsPage() {
       resetForms()
       setOpen(true)
       router.replace(pathname)
+    } else if (searchParams.get("clone") === "1") {
+      const raw = sessionStorage.getItem("clone-tx")
+      sessionStorage.removeItem("clone-tx")
+      if (raw) {
+        try {
+          const src = JSON.parse(raw) as Txn
+          setEditingId(null) // not editing — creating
+          const today_ = today()
+          if (
+            src.transactionType === "journal_entry" ||
+            src.journal_lines.length !== 2
+          ) {
+            setTab("journal")
+            setJournal({
+              date: today_,
+              description: src.description,
+              reference: src.reference ?? "",
+              lines: src.journal_lines.map((l) => ({
+                account_id: l.account_id,
+                debit: Number(l.debit),
+                credit: Number(l.credit),
+                memo: l.memo ?? "",
+              })),
+            })
+          } else {
+            const txnType =
+              (src as any).transaction_type ?? src.transactionType
+            const debitLine = src.journal_lines.find((l) => Number(l.debit) > 0)
+            const creditLine = src.journal_lines.find((l) => Number(l.credit) > 0)
+            const kind: SimpleKind =
+              txnType === "withdrawal" ? "withdrawal" : "deposit"
+            const accountLine = kind === "deposit" ? debitLine : creditLine
+            const categoryLine = kind === "deposit" ? creditLine : debitLine
+            setTab("simple")
+            setSimple({
+              date: today_,
+              description: src.description,
+              reference: src.reference ?? "",
+              kind,
+              amount: Number(src.amount),
+              account_id: accountLine?.account_id,
+              category_id: categoryLine?.account_id,
+            })
+          }
+          setOpen(true)
+        } catch {
+          /* ignore */
+        }
+      }
+      router.replace(pathname)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams])
