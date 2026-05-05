@@ -193,7 +193,7 @@ export default function AccountsPage() {
             aria-label="Accounts"
             sortDescriptor={sortDescriptor}
             onSortChange={(d) => setSortDescriptor(d as SortDesc)}
-            className="[&_th:first-child]:ps-4 [&_td:first-child]:ps-4 [&_th:last-child]:pe-4 [&_td:last-child]:pe-4"
+            style={{ "--gutter": "1rem" } as React.CSSProperties}
           >
             <IntentTableHeader>
               <TableColumn id="code" isRowHeader allowsSorting isResizable>

@@ -118,7 +118,7 @@ export default function ReceiptsPage() {
           onSortChange={(d) =>
             setSortDescriptor(d as { column: string; direction: "ascending" | "descending" })
           }
-          className="[&_th:first-child]:ps-4 [&_td:first-child]:ps-4 [&_th:last-child]:pe-4 [&_td:last-child]:pe-4"
+          style={{ "--gutter": "1rem" } as React.CSSProperties}
         >
           <IntentTableHeader>
             <TableColumn id="filename" isRowHeader allowsSorting isResizable className="w-full">
