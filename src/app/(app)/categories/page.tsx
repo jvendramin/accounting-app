@@ -61,6 +61,7 @@ export default function CategoriesPage() {
   const [kind, setKind] = useState<string>("all")
   const [open, setOpen] = useState(false)
   const [editing, setEditing] = useState<Partial<Category> | null>(null)
+  const [showFilters, setShowFilters] = useState(false)
   const [sortDescriptor, setSortDescriptor] = useState<SortDesc>({
     column: "name",
     direction: "ascending",
@@ -142,8 +143,34 @@ export default function CategoriesPage() {
     <div className="flex h-full min-h-0 flex-col gap-4">
       <Card className="flex flex-1 min-h-0 flex-col">
         <CardHeader className="flex w-full flex-col items-stretch gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
-          <CardTitle>Categories</CardTitle>
-          <div className="flex flex-wrap items-center gap-2.5 w-full sm:w-auto">
+          <div className="flex items-center justify-between gap-2 sm:contents">
+            <CardTitle>Categories</CardTitle>
+            <div className="flex items-center gap-2 sm:hidden">
+              <Button
+                intent="outline"
+                size="sm"
+                onPress={() => setShowFilters((s) => !s)}
+                aria-expanded={showFilters}
+              >
+                {showFilters ? "Hide" : "Filters"}
+              </Button>
+              <Button
+                size="sm"
+                onPress={() => {
+                  setEditing({ kind: "expense" })
+                  setOpen(true)
+                }}
+              >
+                <IconPlus />
+              </Button>
+            </div>
+          </div>
+          <div
+            className={
+              "flex flex-wrap items-center gap-2.5 w-full sm:w-auto " +
+              (showFilters ? "flex" : "hidden sm:flex")
+            }
+          >
             <SearchField
               aria-label="Search"
               value={q}
@@ -173,6 +200,7 @@ export default function CategoriesPage() {
                 setEditing({ kind: "expense" })
                 setOpen(true)
               }}
+              className="hidden sm:inline-flex"
             >
               <IconPlus /> New
             </Button>

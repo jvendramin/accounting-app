@@ -62,6 +62,7 @@ export default function AccountsPage() {
   const [type, setType] = useState<string>("all")
   const [open, setOpen] = useState(false)
   const [editing, setEditing] = useState<Partial<Account> | null>(null)
+  const [showFilters, setShowFilters] = useState(false)
   const [sortDescriptor, setSortDescriptor] = useState<SortDesc>({
     column: "code",
     direction: "ascending",
@@ -151,8 +152,34 @@ export default function AccountsPage() {
     <div className="flex h-full min-h-0 flex-col gap-4">
       <Card className="flex flex-1 min-h-0 flex-col">
         <CardHeader className="flex w-full flex-col items-stretch gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
-          <CardTitle>Chart of Accounts</CardTitle>
-          <div className="flex flex-wrap items-center gap-2.5 w-full sm:w-auto">
+          <div className="flex items-center justify-between gap-2 sm:contents">
+            <CardTitle>Chart of Accounts</CardTitle>
+            <div className="flex items-center gap-2 sm:hidden">
+              <Button
+                intent="outline"
+                size="sm"
+                onPress={() => setShowFilters((s) => !s)}
+                aria-expanded={showFilters}
+              >
+                {showFilters ? "Hide" : "Filters"}
+              </Button>
+              <Button
+                size="sm"
+                onPress={() => {
+                  setEditing({ account_type: "asset" })
+                  setOpen(true)
+                }}
+              >
+                <IconPlus />
+              </Button>
+            </div>
+          </div>
+          <div
+            className={
+              "flex flex-wrap items-center gap-2.5 w-full sm:w-auto " +
+              (showFilters ? "flex" : "hidden sm:flex")
+            }
+          >
             <SearchField
               aria-label="Search"
               value={q}
@@ -165,7 +192,7 @@ export default function AccountsPage() {
               aria-label="Type"
               selectedKey={type}
               onSelectionChange={(k) => setType(String(k))}
-              className="w-[160px]"
+              className="w-full sm:w-[160px]"
             >
               <SelectTrigger />
               <SelectContent>
@@ -182,6 +209,7 @@ export default function AccountsPage() {
                 setEditing({ account_type: "asset" })
                 setOpen(true)
               }}
+              className="hidden sm:inline-flex"
             >
               <IconPlus /> New
             </Button>
