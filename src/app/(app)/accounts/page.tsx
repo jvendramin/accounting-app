@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useMemo, useState } from "react"
+import { useSearchParams, useRouter, usePathname } from "next/navigation"
 import { TableBody } from "react-aria-components"
 import { EllipsisVerticalIcon } from "@heroicons/react/16/solid"
 import {
@@ -77,6 +78,19 @@ export default function AccountsPage() {
   useEffect(() => {
     load()
   }, [])
+
+  // Auto-open create modal when arriving via ?new=1 (Dashboard quick-create).
+  const searchParams = useSearchParams()
+  const router = useRouter()
+  const pathname = usePathname()
+  useEffect(() => {
+    if (searchParams.get("new") === "1") {
+      setEditing({ account_type: "asset" })
+      setOpen(true)
+      router.replace(pathname)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams])
 
   const filtered = useMemo(() => {
     const ql = q.trim().toLowerCase()

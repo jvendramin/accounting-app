@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useMemo, useState } from "react"
+import { useSearchParams, useRouter, usePathname } from "next/navigation"
 import { TableBody } from "react-aria-components"
 import { EllipsisVerticalIcon } from "@heroicons/react/16/solid"
 import {
@@ -160,6 +161,19 @@ export default function TransactionsPage() {
 
   const [open, setOpen] = useState(false)
   const [showFilters, setShowFilters] = useState(false)
+
+  // Auto-open the create modal when arrived via ?new=1 (from Dashboard quick-create).
+  const searchParams = useSearchParams()
+  const router = useRouter()
+  const pathname = usePathname()
+  useEffect(() => {
+    if (searchParams.get("new") === "1") {
+      resetForms()
+      setOpen(true)
+      router.replace(pathname)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams])
   const [tab, setTab] = useState<"simple" | "journal">("simple")
   const [editingId, setEditingId] = useState<number | null>(null)
   const [simple, setSimple] = useState<SimpleForm>({

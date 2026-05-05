@@ -7,8 +7,23 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card"
+import { Button } from "@/components/ui/button"
+import {
+  Menu,
+  MenuContent,
+  MenuItem,
+  MenuLabel,
+  MenuTrigger,
+} from "@/components/ui/menu"
 import { BarChart } from "@/components/ui/bar-chart"
 import { LineChart } from "@/components/ui/line-chart"
+import {
+  IconArrowLeftRight,
+  IconBookOpen,
+  IconReceipt,
+  IconPlus,
+} from "@/components/icons"
+import { useRouter } from "next/navigation"
 import { useCachedFetch } from "@/hooks/use-cached-fetch"
 import { api } from "@/lib/api"
 import { fmtMoney } from "@/lib/format"
@@ -28,12 +43,15 @@ const formatCompact = (v: number) =>
   new Intl.NumberFormat("en-US", { notation: "compact", compactDisplay: "short" }).format(v)
 
 export default function DashboardPage() {
+  const router = useRouter()
   const pnlQ = useCachedFetch<PnL>("dashboard:reports/profit_and_loss", () =>
     api.get("/api/reports/profit_and_loss"),
   )
   const cashQ = useCachedFetch<Cash>("dashboard:reports/cashflow", () =>
     api.get("/api/reports/cashflow"),
   )
+
+  const quickCreate = (path: string) => router.push(`${path}?new=1`)
 
   const pnl = pnlQ.data
   const cash = cashQ.data
@@ -51,6 +69,30 @@ export default function DashboardPage() {
 
   return (
     <div className="grid gap-4">
+      <div className="flex items-center justify-end">
+        <Menu>
+          <MenuTrigger>
+            <Button>
+              <IconPlus /> Quick create
+            </Button>
+          </MenuTrigger>
+          <MenuContent placement="bottom end" className="min-w-56">
+            <MenuItem onAction={() => quickCreate("/transactions")}>
+              <IconArrowLeftRight />
+              <MenuLabel>Transaction</MenuLabel>
+            </MenuItem>
+            <MenuItem onAction={() => quickCreate("/accounts")}>
+              <IconBookOpen />
+              <MenuLabel>Account</MenuLabel>
+            </MenuItem>
+            <MenuItem onAction={() => quickCreate("/receipts")}>
+              <IconReceipt />
+              <MenuLabel>Receipt</MenuLabel>
+            </MenuItem>
+          </MenuContent>
+        </Menu>
+      </div>
+
       <div className="grid gap-4 md:grid-cols-3">
         <Stat label="Income (last 12mo)" value={fmtMoney(pnl?.total_income ?? 0)} />
         <Stat label="Expenses" value={fmtMoney(pnl?.total_expense ?? 0)} />
