@@ -27,7 +27,21 @@ function getClient() {
     } as any
   }
   if (!authUrl) {
-    throw new Error("NEXT_PUBLIC_NEON_AUTH_URL not set — see .env.example")
+    console.error(
+      "NEXT_PUBLIC_NEON_AUTH_URL is not set. Auth flows will be unavailable. " +
+        "Set it in Vercel Project Settings → Environment Variables (Production & Preview).",
+    )
+    // Return the SSR stub permanently rather than crashing the app — pages
+    // will render the login screen which will surface the misconfig clearly.
+    cached = {
+      auth: {
+        useSession: () => ({ isPending: false, data: null }),
+        signIn: { email: async () => ({ error: { message: "Auth URL missing" } }) },
+        signUp: { email: async () => ({ error: { message: "Auth URL missing" } }) },
+        signOut: async () => {},
+      },
+    } as any
+    return cached
   }
   cached = createClient({
     auth: {
