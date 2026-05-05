@@ -188,7 +188,7 @@ export default function AccountsPage() {
           </div>
         </CardHeader>
         <CardContent
-          className="flex-1 overflow-auto p-0"
+          className="flex-1 overflow-auto px-4 py-0 [&_table]:min-w-[640px]"
           style={{ "--gutter": "1rem" } as React.CSSProperties}
         >
           <Table
@@ -198,23 +198,13 @@ export default function AccountsPage() {
             onSortChange={(d) => setSortDescriptor(d as SortDesc)}
           >
             <IntentTableHeader>
-              <TableColumn
-                id="code"
-                isRowHeader
-                allowsSorting
-                isResizable
-                className="hidden sm:table-cell"
-              >
+              <TableColumn id="code" isRowHeader allowsSorting isResizable>
                 Code
               </TableColumn>
               <TableColumn id="name" allowsSorting isResizable className="w-full">
                 Name
               </TableColumn>
-              <TableColumn
-                id="account_type"
-                allowsSorting
-                className="hidden sm:table-cell"
-              >
+              <TableColumn id="account_type" allowsSorting>
                 Type
               </TableColumn>
               <TableColumn id="balance" allowsSorting>
@@ -234,11 +224,9 @@ export default function AccountsPage() {
             >
               {(a) => (
                 <TableRow id={a.id}>
-                  <TableCell className="hidden sm:table-cell font-mono text-xs">
-                    {a.code}
-                  </TableCell>
+                  <TableCell className="font-mono text-xs">{a.code}</TableCell>
                   <TableCell className="font-medium">{a.name}</TableCell>
-                  <TableCell className="hidden sm:table-cell">
+                  <TableCell>
                     <Badge intent="secondary">{titleCase(a.account_type)}</Badge>
                   </TableCell>
                   <TableCell className="text-right tabular-nums">

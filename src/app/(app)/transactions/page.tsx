@@ -457,7 +457,7 @@ export default function TransactionsPage() {
           </div>
         </CardHeader>
         <CardContent
-          className="flex-1 overflow-auto p-0"
+          className="flex-1 overflow-auto px-4 py-0 [&_table]:min-w-[720px]"
           style={{ "--gutter": "1rem" } as React.CSSProperties}
         >
           <Table
@@ -473,19 +473,10 @@ export default function TransactionsPage() {
               <TableColumn id="description" allowsSorting isResizable className="w-full">
                 Description
               </TableColumn>
-              <TableColumn
-                id="reference"
-                allowsSorting
-                isResizable
-                className="hidden md:table-cell"
-              >
+              <TableColumn id="reference" allowsSorting isResizable>
                 Reference
               </TableColumn>
-              <TableColumn
-                id="transaction_type"
-                allowsSorting
-                className="hidden sm:table-cell"
-              >
+              <TableColumn id="transaction_type" allowsSorting>
                 Type
               </TableColumn>
               <TableColumn id="amount" allowsSorting>
@@ -509,10 +500,8 @@ export default function TransactionsPage() {
                   <TableRow id={t.id} onAction={() => editTxn(t)}>
                     <TableCell className="font-mono text-xs">{t.date}</TableCell>
                     <TableCell className="font-medium">{t.description}</TableCell>
-                    <TableCell className="hidden md:table-cell text-muted-fg">
-                      {t.reference}
-                    </TableCell>
-                    <TableCell className="hidden sm:table-cell">
+                    <TableCell className="text-muted-fg">{t.reference}</TableCell>
+                    <TableCell>
                       <Badge intent={TYPE_INTENT[txnType] ?? "primary"}>
                         {titleCase(txnType)}
                       </Badge>
