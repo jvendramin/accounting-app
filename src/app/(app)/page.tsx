@@ -160,28 +160,34 @@ export default function DashboardPage() {
               selectionMode="none"
             >
               {(s) => (
-                <GridListItem id={s.id} textValue={s.description}>
+                <GridListItem
+                  id={s.id}
+                  textValue={s.description}
+                  className="!flex-col !items-stretch !gap-2 sm:!flex-row sm:!items-center sm:!gap-2.5"
+                >
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2">
                       <span className="truncate font-medium">{s.description}</span>
-                      <Badge intent="secondary">
+                      <Badge intent="secondary" className="shrink-0">
                         {titleCase(s.transaction_type)}
                       </Badge>
                     </div>
-                    <div className="text-xs text-muted-fg">
+                    <div className="text-xs text-muted-fg truncate">
                       {suggestionReason(s)}
                     </div>
                   </div>
-                  <div className="text-right tabular-nums whitespace-nowrap">
-                    {fmtMoney(s.amount)}
+                  <div className="flex items-center justify-between gap-3 sm:contents">
+                    <div className="text-right tabular-nums whitespace-nowrap">
+                      {fmtMoney(s.amount)}
+                    </div>
+                    <Button
+                      intent="outline"
+                      size="sm"
+                      onPress={() => cloneSuggestion(s)}
+                    >
+                      <IconPlus /> Clone
+                    </Button>
                   </div>
-                  <Button
-                    intent="outline"
-                    size="sm"
-                    onPress={() => cloneSuggestion(s)}
-                  >
-                    <IconPlus /> Clone
-                  </Button>
                 </GridListItem>
               )}
             </GridList>
