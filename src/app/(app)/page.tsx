@@ -22,6 +22,7 @@ import {
   IconBookOpen,
   IconReceipt,
   IconPlus,
+  IconTag,
 } from "@/components/icons"
 import { useRouter } from "next/navigation"
 import { useCachedFetch } from "@/hooks/use-cached-fetch"
@@ -84,6 +85,10 @@ export default function DashboardPage() {
             <MenuItem onAction={() => quickCreate("/accounts")}>
               <IconBookOpen />
               <MenuLabel>Account</MenuLabel>
+            </MenuItem>
+            <MenuItem onAction={() => quickCreate("/categories")}>
+              <IconTag />
+              <MenuLabel>Category</MenuLabel>
             </MenuItem>
             <MenuItem onAction={() => quickCreate("/receipts")}>
               <IconReceipt />
