@@ -30,6 +30,7 @@ import {
 } from "@/components/ui/select"
 import {
   Modal,
+  ModalBody,
   ModalContent,
   ModalFooter,
   ModalHeader,
@@ -519,35 +520,31 @@ export default function TransactionsPage() {
         </CardContent>
       </Card>
 
-      <Modal
+      <ModalContent
+        size="3xl"
         isOpen={open}
         onOpenChange={(v) => {
           setOpen(v)
           if (!v) resetForms()
         }}
       >
-        <ModalContent
-          size="3xl"
-          className="h-[min(720px,calc(100svh-6rem))] sm:h-[720px]"
-        >
           <ModalHeader>
             <ModalTitle>
               {editingId ? "Edit Transaction" : "Add Transaction"}
             </ModalTitle>
           </ModalHeader>
-          <div className="px-6 pt-2">
+          <ModalBody>
             <Tabs
               selectedKey={tab}
               onSelectionChange={(k) => setTab(k as "simple" | "journal")}
               aria-label="Transaction type"
+              className="mb-4"
             >
               <TabList>
                 <Tab id="simple">Deposit / Withdrawal</Tab>
                 <Tab id="journal">Journal Entry</Tab>
               </TabList>
             </Tabs>
-          </div>
-          <div className="min-h-0 flex-1 overflow-y-auto px-6 py-4">
             {tab === "simple" ? (
               <div className="grid gap-4">
                 <div className="grid gap-4 sm:grid-cols-2">
@@ -801,7 +798,7 @@ export default function TransactionsPage() {
                 </TextField>
               </div>
             )}
-          </div>
+          </ModalBody>
           <ModalFooter className="pt-4 sm:pt-3">
             <Button
               intent="outline"
@@ -812,8 +809,7 @@ export default function TransactionsPage() {
             </Button>
             <Button onPress={save}>Save</Button>
           </ModalFooter>
-        </ModalContent>
-      </Modal>
+      </ModalContent>
     </div>
   )
 }

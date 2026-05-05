@@ -22,7 +22,7 @@ import {
   SelectTrigger,
 } from "@/components/ui/select"
 import {
-  Modal,
+  ModalBody,
   ModalContent,
   ModalFooter,
   ModalHeader,
@@ -246,14 +246,13 @@ export default function AccountsPage() {
         </CardContent>
       </Card>
 
-      <Modal isOpen={open} onOpenChange={setOpen}>
-        <ModalContent>
+      <ModalContent size="2xl" isOpen={open} onOpenChange={setOpen}>
           <ModalHeader>
             <ModalTitle>
               {editing?.id ? "Edit Account" : "New Account"}
             </ModalTitle>
           </ModalHeader>
-          <div className="grid gap-4 px-6 py-4">
+          <ModalBody className="grid gap-4">
             <TextField
               value={editing?.name ?? ""}
               onChange={(v) => setEditing({ ...editing!, name: v })}
@@ -290,7 +289,7 @@ export default function AccountsPage() {
                 </SelectContent>
               </Select>
             </div>
-          </div>
+          </ModalBody>
           <ModalFooter className="pt-4 sm:pt-3">
             <Button
               intent="outline"
@@ -301,8 +300,7 @@ export default function AccountsPage() {
             </Button>
             <Button onPress={save}>Save</Button>
           </ModalFooter>
-        </ModalContent>
-      </Modal>
+      </ModalContent>
     </div>
   )
 }
