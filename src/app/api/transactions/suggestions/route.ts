@@ -4,18 +4,23 @@ import { db } from "@/lib/db"
 
 export const dynamic = "force-dynamic"
 
-// Suggested transactions: rows from "this calendar week, but one month ago".
-// Useful as recurring-bill recommendations. We compare on date_part(week,...)
-// against `now() - interval '1 month'` so a user landing on Mar 14 (week 11)
-// sees their Feb 14 (week 7 of Feb but shifted) transactions — actually we
-// match on the same week-of-year, one month back.
+// Smart suggestions for the dashboard:
+//  - rows from the same calendar week, one month ago
+//  - that the user has NOT already entered this month (matched by description)
+//  - with a recurrence count so the UI can show "seen N times before"
 export async function GET() {
   const rows = await db.execute(sql`
-    with target as (
-      select (current_date - interval '1 month')::date as anchor
+    with target_week as (
+      select date_trunc('week', current_date - interval '1 month')::date as start_d
     )
     select
-      t.id, t.date, t.description, t.reference, t.transaction_type, t.amount::float8 as amount,
+      t.id, t.date, t.description, t.reference,
+      t.transaction_type, t.amount::float8 as amount,
+      (
+        select count(*)::int from transactions t2
+        where lower(t2.description) = lower(t.description)
+          and t2.date <= t.date
+      ) as occurrences,
       coalesce(json_agg(json_build_object(
         'id', jl.id,
         'account_id', jl.account_id,
@@ -25,11 +30,16 @@ export async function GET() {
         'memo', jl.memo
       )) filter (where jl.id is not null), '[]') as journal_lines
     from transactions t
-    cross join target
+    cross join target_week tw
     left join journal_lines jl on jl.transaction_id = t.id
     left join accounts a on a.id = jl.account_id
-    where t.date >= date_trunc('week', target.anchor)
-      and t.date < date_trunc('week', target.anchor) + interval '7 days'
+    where t.date >= tw.start_d
+      and t.date < tw.start_d + interval '7 days'
+      and not exists (
+        select 1 from transactions t2
+        where lower(t2.description) = lower(t.description)
+          and t2.date >= date_trunc('month', current_date)
+      )
     group by t.id
     order by t.date asc, t.id asc
     limit 20

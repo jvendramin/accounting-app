@@ -29,6 +29,7 @@ import { useCachedFetch } from "@/hooks/use-cached-fetch"
 import { api } from "@/lib/api"
 import { fmtMoney, titleCase } from "@/lib/format"
 import { Badge } from "@/components/ui/badge"
+import { GridList, GridListItem } from "@/components/ui/grid-list"
 
 type Suggestion = {
   id: number
@@ -37,6 +38,7 @@ type Suggestion = {
   reference: string | null
   transaction_type: string
   amount: number
+  occurrences: number
   journal_lines: Array<{
     id?: number
     account_id: number
@@ -45,6 +47,16 @@ type Suggestion = {
     credit: number
     memo?: string | null
   }>
+}
+
+function suggestionReason(s: Suggestion): string {
+  const niceDate = new Date(`${s.date}T00:00:00`).toLocaleDateString(undefined, {
+    month: "short",
+    day: "numeric",
+  })
+  if (s.occurrences >= 3) return `Recurring (${s.occurrences}× before) — last on ${niceDate}`
+  if (s.occurrences === 2) return `Seen twice before — last on ${niceDate}`
+  return `Same week last month — ${niceDate}`
 }
 
 type PnL = {
@@ -142,28 +154,37 @@ export default function DashboardPage() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <ul className="grid gap-2">
-              {suggestions.map((s) => (
-                <li
-                  key={s.id}
-                  className="flex items-center justify-between gap-3 rounded-lg border p-3"
-                >
+            <GridList
+              aria-label="Suggested recurring transactions"
+              items={suggestions}
+              selectionMode="none"
+            >
+              {(s) => (
+                <GridListItem id={s.id} textValue={s.description}>
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2">
                       <span className="truncate font-medium">{s.description}</span>
-                      <Badge intent="secondary">{titleCase(s.transaction_type)}</Badge>
+                      <Badge intent="secondary">
+                        {titleCase(s.transaction_type)}
+                      </Badge>
                     </div>
-                    <div className="text-xs text-muted-fg font-mono">{s.date}</div>
+                    <div className="text-xs text-muted-fg">
+                      {suggestionReason(s)}
+                    </div>
                   </div>
                   <div className="text-right tabular-nums whitespace-nowrap">
                     {fmtMoney(s.amount)}
                   </div>
-                  <Button intent="outline" size="sm" onPress={() => cloneSuggestion(s)}>
+                  <Button
+                    intent="outline"
+                    size="sm"
+                    onPress={() => cloneSuggestion(s)}
+                  >
                     <IconPlus /> Clone
                   </Button>
-                </li>
-              ))}
-            </ul>
+                </GridListItem>
+              )}
+            </GridList>
           </CardContent>
         </Card>
       )}
