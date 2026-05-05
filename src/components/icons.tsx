@@ -15,4 +15,5 @@ export {
   PlusIcon as IconPlus,
   MagnifyingGlassIcon as IconSearch,
   XMarkIcon as IconX,
+  TagIcon as IconTag,
 } from "@heroicons/react/24/outline"

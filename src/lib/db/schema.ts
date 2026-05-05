@@ -97,6 +97,22 @@ export const receiptsRelations = relations(receipts, ({ one }) => ({
   }),
 }))
 
+export const categories = pgTable("categories", {
+  id: bigserial("id", { mode: "number" }).primaryKey(),
+  name: varchar("name").notNull(),
+  kind: varchar("kind").notNull(),
+  color: varchar("color"),
+  description: text("description"),
+  createdAt: timestamp("created_at", { precision: 6, mode: "date" })
+    .defaultNow()
+    .notNull(),
+  updatedAt: timestamp("updated_at", { precision: 6, mode: "date" })
+    .defaultNow()
+    .notNull(),
+})
+
+export type Category = typeof categories.$inferSelect
+
 export type Account = typeof accounts.$inferSelect
 export type Transaction = typeof transactions.$inferSelect
 export type JournalLine = typeof journalLines.$inferSelect

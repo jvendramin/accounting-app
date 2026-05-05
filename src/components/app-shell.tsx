@@ -45,6 +45,7 @@ import {
   IconBookOpen,
   IconArrowLeftRight,
   IconLogout,
+  IconTag,
 } from "@/components/icons"
 import { usePathname } from "next/navigation"
 
@@ -52,6 +53,7 @@ const titles: Record<string, string> = {
   "/": "Dashboard",
   "/transactions": "Transactions",
   "/accounts": "Chart of Accounts",
+  "/categories": "Categories",
   "/receipts": "Receipts",
   "/import": "Import",
   "/reports/pnl": "Profit & Loss",
@@ -100,6 +102,13 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               >
                 <IconBookOpen />
                 <SidebarLabel>Chart of Accounts</SidebarLabel>
+              </SidebarItem>
+              <SidebarItem
+                href="/categories"
+                isCurrent={pathname === "/categories"}
+              >
+                <IconTag />
+                <SidebarLabel>Categories</SidebarLabel>
               </SidebarItem>
               <SidebarItem
                 href="/receipts"
