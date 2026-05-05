@@ -30,6 +30,8 @@ import { api } from "@/lib/api"
 import { fmtMoney, titleCase } from "@/lib/format"
 import { Badge } from "@/components/ui/badge"
 import { GridList, GridListItem } from "@/components/ui/grid-list"
+import { QuickCreateModal, type QuickType } from "@/components/quick-create-modal"
+import { useState } from "react"
 
 type Suggestion = {
   id: number
@@ -82,7 +84,8 @@ export default function DashboardPage() {
     api.get("/api/reports/cashflow"),
   )
 
-  const quickCreate = (path: string) => router.push(`${path}?new=1`)
+  const [quickType, setQuickType] = useState<QuickType>(null)
+  const quickCreate = (t: QuickType) => setQuickType(t)
 
   const suggestionsQ = useCachedFetch<Suggestion[]>(
     "dashboard:suggestions",
@@ -119,19 +122,19 @@ export default function DashboardPage() {
             </Button>
           </MenuTrigger>
           <MenuContent placement="bottom end" className="min-w-56">
-            <MenuItem onAction={() => quickCreate("/transactions")}>
+            <MenuItem onAction={() => quickCreate("transaction")}>
               <IconArrowLeftRight />
               <MenuLabel>Transaction</MenuLabel>
             </MenuItem>
-            <MenuItem onAction={() => quickCreate("/accounts")}>
+            <MenuItem onAction={() => quickCreate("account")}>
               <IconBookOpen />
               <MenuLabel>Account</MenuLabel>
             </MenuItem>
-            <MenuItem onAction={() => quickCreate("/categories")}>
+            <MenuItem onAction={() => quickCreate("category")}>
               <IconTag />
               <MenuLabel>Category</MenuLabel>
             </MenuItem>
-            <MenuItem onAction={() => quickCreate("/receipts")}>
+            <MenuItem onAction={() => router.push("/receipts")}>
               <IconReceipt />
               <MenuLabel>Receipt</MenuLabel>
             </MenuItem>
@@ -234,6 +237,11 @@ export default function DashboardPage() {
           </CardContent>
         </Card>
       </div>
+
+      <QuickCreateModal
+        type={quickType}
+        onClose={() => setQuickType(null)}
+      />
     </div>
   )
 }
