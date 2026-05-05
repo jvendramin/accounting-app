@@ -12,7 +12,13 @@ import {
 } from "@/components/ui/table"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { FileTrigger } from "@/components/ui/file-trigger"
+import { FileUploader } from "@/components/file-uploader"
+import {
+  ModalContent,
+  ModalHeader,
+  ModalTitle,
+  ModalBody,
+} from "@/components/ui/modal"
 import {
   Menu,
   MenuContent,
@@ -35,7 +41,6 @@ export default function ReceiptsPage() {
     api.get("/api/receipts", userSub ? { user_sub: userSub } : {}),
   )
   const rawRows = data ?? []
-  const [busy, setBusy] = useState(false)
   const [sortDescriptor, setSortDescriptor] = useState<{
     column: string
     direction: "ascending" | "descending"
@@ -53,43 +58,29 @@ export default function ReceiptsPage() {
     })
   }, [rawRows, sortDescriptor])
 
-  const upload = async (files: FileList | null) => {
-    if (!files || files.length === 0) return
-    setBusy(true)
+  const [uploadOpen, setUploadOpen] = useState(false)
+
+  const onUploaded = async (file: {
+    filename: string
+    content_type: string
+    byte_size: number
+    storage_key: string
+  }) => {
     try {
-      for (const file of Array.from(files)) {
-        const presign = await api.post<{
-          upload_url: string
-          key: string
-          public_url: string
-        }>("/api/receipts/presign", {
-          filename: file.name,
-          content_type: file.type,
-          user_sub: userSub ?? "anonymous",
-        })
-        const put = await fetch(presign.upload_url, {
-          method: "PUT",
-          headers: { "Content-Type": file.type || "application/octet-stream" },
-          body: file,
-        })
-        if (!put.ok) throw new Error(`Upload failed: ${put.status}`)
-        await api.post("/api/receipts", {
-          receipt: {
-            filename: file.name,
-            content_type: file.type,
-            byte_size: file.size,
-            storage_key: presign.key,
-            uploader_sub: userSub ?? "anonymous",
-          },
-        })
-      }
+      await api.post("/api/receipts", {
+        receipt: {
+          filename: file.filename,
+          content_type: file.content_type,
+          byte_size: file.byte_size,
+          storage_key: file.storage_key,
+          uploader_sub: userSub ?? "anonymous",
+        },
+      })
       toast.success("Uploaded")
       invalidateCache(key)
       refetch()
     } catch (e: any) {
-      toast.error(e?.message ?? "Upload failed")
-    } finally {
-      setBusy(false)
+      toast.error(e?.message ?? "Save failed")
     }
   }
 
@@ -104,11 +95,9 @@ export default function ReceiptsPage() {
     <Card className="flex flex-1 min-h-0 flex-col">
       <CardHeader className="flex w-full flex-col items-stretch gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
         <CardTitle>Receipts</CardTitle>
-        <FileTrigger acceptedFileTypes={["image/*", "application/pdf"]} allowsMultiple onSelect={upload}>
-          <Button isPending={busy}>
-            <IconPlus /> Upload
-          </Button>
-        </FileTrigger>
+        <Button onPress={() => setUploadOpen(true)}>
+          <IconPlus /> Upload
+        </Button>
       </CardHeader>
       <CardContent
         className="flex-1 overflow-auto px-4 py-0 [&_table]:min-w-[640px]"
@@ -177,6 +166,24 @@ export default function ReceiptsPage() {
           </TableBody>
         </Table>
       </CardContent>
+
+      <ModalContent
+        size="2xl"
+        isOpen={uploadOpen}
+        onOpenChange={setUploadOpen}
+      >
+        <ModalHeader>
+          <ModalTitle>Upload receipts</ModalTitle>
+        </ModalHeader>
+        <ModalBody>
+          <FileUploader
+            userSub={userSub ?? "anonymous"}
+            acceptedFileTypes={["image/*", "application/pdf"]}
+            maxFileSize="20MB"
+            onUploaded={onUploaded}
+          />
+        </ModalBody>
+      </ModalContent>
     </Card>
   )
 }

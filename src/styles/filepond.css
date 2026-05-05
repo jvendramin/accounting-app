@@ -1,0 +1,58 @@
+/* FilePond theming — keep default light styling, override for dark mode
+   using Intent UI's CSS custom properties so the uploader matches the rest
+   of the app. */
+
+.dark .filepond--root {
+  color: var(--color-fg, currentColor);
+}
+
+.dark .filepond--panel-root {
+  background-color: var(--color-bg);
+  border: 1px dashed var(--color-border);
+  border-radius: 0.75rem;
+}
+
+.dark .filepond--root:hover .filepond--panel-root,
+.dark .filepond--root[data-hopper-state="drag-over"] .filepond--panel-root {
+  border-color: var(--color-ring);
+  background-color: color-mix(in oklab, var(--color-muted) 60%, var(--color-bg));
+}
+
+.dark .filepond--drop-label {
+  color: var(--color-muted-fg);
+}
+
+.dark .filepond--label-action {
+  color: var(--color-primary);
+  text-decoration-color: color-mix(in oklab, var(--color-primary) 50%, transparent);
+}
+
+.dark .filepond--item-panel {
+  background-color: var(--color-secondary, var(--color-muted));
+}
+
+.dark .filepond--file {
+  color: var(--color-fg);
+}
+
+.dark .filepond--file-action-button {
+  background-color: color-mix(in oklab, var(--color-fg) 18%, transparent);
+  color: var(--color-fg);
+}
+
+.dark .filepond--file-action-button:hover,
+.dark .filepond--file-action-button:focus {
+  box-shadow: 0 0 0 0.125em var(--color-ring);
+}
+
+.dark .filepond--file-status-main {
+  color: var(--color-fg);
+}
+.dark .filepond--file-status-sub {
+  color: var(--color-muted-fg);
+}
+
+.dark [data-filepond-item-state*="invalid"] .filepond--item-panel,
+.dark [data-filepond-item-state*="error"] .filepond--item-panel {
+  background-color: color-mix(in oklab, var(--color-danger) 30%, var(--color-muted));
+}
