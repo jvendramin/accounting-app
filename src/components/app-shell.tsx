@@ -65,7 +65,14 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const session = auth.useSession()
   const user = session.data?.user
   const { theme, setTheme } = useTheme()
-  const initials = (user?.email ?? "?").slice(0, 2).toUpperCase()
+  const initials = (() => {
+    const name = user?.name?.trim()
+    if (name) {
+      const parts = name.split(/\s+/)
+      return ((parts[0]?.[0] ?? "") + (parts[1]?.[0] ?? "")).toUpperCase() || "?"
+    }
+    return (user?.email ?? "?").slice(0, 2).toUpperCase()
+  })()
 
   return (
     <SidebarProvider>
@@ -138,11 +145,12 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               aria-label="Account"
             >
               <div className="flex items-center gap-x-2 min-w-0">
-                <Avatar isSquare className="size-7 *:size-7" alt={user?.email ?? ""}>
-                  <span className="grid place-items-center bg-primary text-primary-fg text-[10px] font-semibold size-full rounded">
-                    {initials}
-                  </span>
-                </Avatar>
+                <Avatar
+                  isSquare
+                  initials={initials}
+                  className="size-7 *:size-7"
+                  alt={user?.name ?? user?.email ?? ""}
+                />
                 <div className="text-sm leading-tight min-w-0 in-data-[collapsible=dock]:hidden">
                   <SidebarLabel className="truncate">
                     {user?.name ?? user?.email}
