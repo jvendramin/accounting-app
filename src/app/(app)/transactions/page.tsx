@@ -802,8 +802,12 @@ export default function TransactionsPage() {
               </div>
             )}
           </div>
-          <ModalFooter>
-            <Button intent="outline" onPress={() => setOpen(false)}>
+          <ModalFooter className="pt-4 sm:pt-3">
+            <Button
+              intent="outline"
+              onPress={() => setOpen(false)}
+              className="hidden sm:inline-flex"
+            >
               Cancel
             </Button>
             <Button onPress={save}>Save</Button>
