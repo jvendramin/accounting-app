@@ -25,13 +25,20 @@ import {
   IconTag,
 } from "@/components/icons"
 import { useRouter } from "next/navigation"
-import { useCachedFetch } from "@/hooks/use-cached-fetch"
+import {
+  invalidateCache,
+  invalidateCachePrefix,
+  useCachedFetch,
+} from "@/hooks/use-cached-fetch"
 import { api } from "@/lib/api"
 import { fmtMoney, titleCase } from "@/lib/format"
 import { Badge } from "@/components/ui/badge"
 import { GridList, GridListItem } from "@/components/ui/grid-list"
 import { QuickCreateModal, type QuickType } from "@/components/quick-create-modal"
 import { useState } from "react"
+import { toast } from "sonner"
+import type { Selection } from "react-aria-components"
+import { IconTrash } from "@/components/icons"
 
 type Suggestion = {
   id: number
@@ -98,6 +105,67 @@ export default function DashboardPage() {
     router.push("/transactions?clone=1")
   }
 
+  const [selected, setSelected] = useState<Selection>(new Set())
+  const selectedIds: number[] =
+    selected === "all"
+      ? suggestions.map((s) => s.id)
+      : Array.from(selected as Set<number | string>).map((k) => Number(k))
+  const selectedSuggestions = suggestions.filter((s) =>
+    selectedIds.includes(s.id),
+  )
+
+  const dismissOne = async (id: number) => {
+    try {
+      await api.post("/api/transactions/suggestions/dismiss", { ids: [id] })
+      invalidateCache("dashboard:suggestions")
+      suggestionsQ.refetch()
+    } catch {
+      /* toasted */
+    }
+  }
+
+  const bulkDismiss = async () => {
+    if (selectedIds.length === 0) return
+    try {
+      await api.post("/api/transactions/suggestions/dismiss", { ids: selectedIds })
+      toast.success(`Dismissed ${selectedIds.length} suggestion(s)`)
+      setSelected(new Set())
+      invalidateCache("dashboard:suggestions")
+      suggestionsQ.refetch()
+    } catch {}
+  }
+
+  const bulkCreate = async () => {
+    if (selectedSuggestions.length === 0) return
+    const todayStr = new Date().toISOString().slice(0, 10)
+    try {
+      await api.post("/api/transactions/bulk_create", {
+        transactions: selectedSuggestions.map((s) => ({
+          date: todayStr,
+          description: s.description,
+          reference: s.reference ?? "",
+          transaction_type: s.transaction_type,
+          amount: s.amount,
+          journal_lines_attributes: s.journal_lines.map((l) => ({
+            account_id: l.account_id,
+            debit: l.debit,
+            credit: l.credit,
+            memo: l.memo ?? null,
+          })),
+        })),
+      })
+      toast.success(`Created ${selectedSuggestions.length} transaction(s)`)
+      setSelected(new Set())
+      invalidateCachePrefix("transactions:")
+      invalidateCache(
+        "dashboard:reports/profit_and_loss",
+        "dashboard:reports/cashflow",
+        "dashboard:suggestions",
+      )
+      suggestionsQ.refetch()
+    } catch {}
+  }
+
   const pnl = pnlQ.data
   const cash = cashQ.data
 
@@ -157,10 +225,28 @@ export default function DashboardPage() {
             </CardDescription>
           </CardHeader>
           <CardContent>
+            {selectedIds.length > 0 && (
+              <div className="mb-3 flex flex-wrap items-center justify-between gap-2 rounded-lg border bg-muted/30 px-3 py-2 text-sm">
+                <span className="font-medium">
+                  {selectedIds.length} selected
+                </span>
+                <div className="flex items-center gap-2">
+                  <Button intent="outline" size="sm" onPress={bulkDismiss}>
+                    <IconTrash /> Dismiss
+                  </Button>
+                  <Button size="sm" onPress={bulkCreate}>
+                    <IconPlus /> Create all
+                  </Button>
+                </div>
+              </div>
+            )}
             <GridList
               aria-label="Suggested recurring transactions"
               items={suggestions}
-              selectionMode="none"
+              selectionMode="multiple"
+              selectionBehavior="toggle"
+              selectedKeys={selected}
+              onSelectionChange={setSelected}
             >
               {(s) => (
                 <GridListItem
@@ -183,13 +269,23 @@ export default function DashboardPage() {
                     <div className="text-right tabular-nums whitespace-nowrap">
                       {fmtMoney(s.amount)}
                     </div>
-                    <Button
-                      intent="outline"
-                      size="sm"
-                      onPress={() => cloneSuggestion(s)}
-                    >
-                      <IconPlus /> Clone
-                    </Button>
+                    <div className="flex items-center gap-2">
+                      <Button
+                        intent="plain"
+                        size="sq-sm"
+                        aria-label="Dismiss"
+                        onPress={() => dismissOne(s.id)}
+                      >
+                        <IconTrash />
+                      </Button>
+                      <Button
+                        intent="outline"
+                        size="sm"
+                        onPress={() => cloneSuggestion(s)}
+                      >
+                        <IconPlus /> Clone
+                      </Button>
+                    </div>
                   </div>
                 </GridListItem>
               )}

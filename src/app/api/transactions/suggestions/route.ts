@@ -4,18 +4,20 @@ import { db } from "@/lib/db"
 
 export const dynamic = "force-dynamic"
 
-// Smart suggestions for the dashboard:
+// Smart suggestions:
 //  - rows from the same calendar week, one month ago
 //  - that the user has NOT already entered this month (matched by description)
-//  - with a recurrence count so the UI can show "seen N times before"
+//  - that the user has NOT dismissed for the *current* target week
 export async function GET() {
   const rows = await db.execute(sql`
     with target_week as (
-      select date_trunc('week', current_date - interval '1 month')::date as start_d
+      select date_trunc('week', current_date - interval '1 month')::date as start_d,
+             date_trunc('week', current_date)::date as current_week
     )
     select
       t.id, t.date, t.description, t.reference,
       t.transaction_type, t.amount::float8 as amount,
+      tw.current_week as target_week_start,
       (
         select count(*)::int from transactions t2
         where lower(t2.description) = lower(t.description)
@@ -40,7 +42,12 @@ export async function GET() {
         where lower(t2.description) = lower(t.description)
           and t2.date >= date_trunc('month', current_date)
       )
-    group by t.id
+      and not exists (
+        select 1 from dismissed_suggestions ds
+        where ds.source_transaction_id = t.id
+          and ds.dismissed_for_week_start = tw.current_week
+      )
+    group by t.id, tw.current_week
     order by t.date asc, t.id asc
     limit 20
   `)
