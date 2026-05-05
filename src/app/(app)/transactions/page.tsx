@@ -528,7 +528,7 @@ export default function TransactionsPage() {
       >
         <ModalContent
           size="3xl"
-          className="h-[min(720px,calc(100svh-1rem))] sm:h-[720px]"
+          className="h-[min(720px,calc(100svh-6rem))] sm:h-[720px]"
         >
           <ModalHeader>
             <ModalTitle>
