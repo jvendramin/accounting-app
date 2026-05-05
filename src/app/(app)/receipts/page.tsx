@@ -110,7 +110,7 @@ export default function ReceiptsPage() {
           </Button>
         </FileTrigger>
       </CardHeader>
-      <CardContent className="flex-1 overflow-auto p-0 [&_table]:min-w-[640px]">
+      <CardContent className="flex-1 overflow-auto p-0">
         <Table
           allowResize
           aria-label="Receipts"
@@ -124,13 +124,18 @@ export default function ReceiptsPage() {
             <TableColumn id="filename" isRowHeader allowsSorting isResizable className="w-full">
               File
             </TableColumn>
-            <TableColumn id="byte_size" allowsSorting>
+            <TableColumn id="byte_size" allowsSorting className="hidden sm:table-cell">
               Size
             </TableColumn>
-            <TableColumn id="content_type" allowsSorting isResizable>
+            <TableColumn
+              id="content_type"
+              allowsSorting
+              isResizable
+              className="hidden md:table-cell"
+            >
               Type
             </TableColumn>
-            <TableColumn id="created_at" allowsSorting>
+            <TableColumn id="created_at" allowsSorting className="hidden sm:table-cell">
               Uploaded
             </TableColumn>
             <TableColumn id="actions" width={56} minWidth={56} maxWidth={56}>
@@ -148,11 +153,13 @@ export default function ReceiptsPage() {
             {(r) => (
               <TableRow id={r.id}>
                 <TableCell className="font-medium">{r.filename}</TableCell>
-                <TableCell className="tabular-nums">
+                <TableCell className="hidden sm:table-cell tabular-nums">
                   {r.byte_size ? `${Math.round(r.byte_size / 1024)} KB` : "—"}
                 </TableCell>
-                <TableCell className="text-muted-fg">{r.content_type}</TableCell>
-                <TableCell className="text-muted-fg">
+                <TableCell className="hidden md:table-cell text-muted-fg">
+                  {r.content_type}
+                </TableCell>
+                <TableCell className="hidden sm:table-cell text-muted-fg">
                   {r.created_at ? new Date(r.created_at).toLocaleDateString() : "—"}
                 </TableCell>
                 <TableCell>

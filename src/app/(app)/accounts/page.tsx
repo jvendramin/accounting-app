@@ -187,22 +187,34 @@ export default function AccountsPage() {
             </Button>
           </div>
         </CardHeader>
-        <CardContent className="flex-1 overflow-auto p-0 [&_table]:min-w-[640px]">
+        <CardContent
+          className="flex-1 overflow-auto p-0"
+          style={{ "--gutter": "1rem" } as React.CSSProperties}
+        >
           <Table
             allowResize
             aria-label="Accounts"
             sortDescriptor={sortDescriptor}
             onSortChange={(d) => setSortDescriptor(d as SortDesc)}
-            style={{ "--gutter": "1rem" } as React.CSSProperties}
           >
             <IntentTableHeader>
-              <TableColumn id="code" isRowHeader allowsSorting isResizable>
+              <TableColumn
+                id="code"
+                isRowHeader
+                allowsSorting
+                isResizable
+                className="hidden sm:table-cell"
+              >
                 Code
               </TableColumn>
               <TableColumn id="name" allowsSorting isResizable className="w-full">
                 Name
               </TableColumn>
-              <TableColumn id="account_type" allowsSorting>
+              <TableColumn
+                id="account_type"
+                allowsSorting
+                className="hidden sm:table-cell"
+              >
                 Type
               </TableColumn>
               <TableColumn id="balance" allowsSorting>
@@ -222,9 +234,11 @@ export default function AccountsPage() {
             >
               {(a) => (
                 <TableRow id={a.id}>
-                  <TableCell className="font-mono text-xs">{a.code}</TableCell>
+                  <TableCell className="hidden sm:table-cell font-mono text-xs">
+                    {a.code}
+                  </TableCell>
                   <TableCell className="font-medium">{a.name}</TableCell>
-                  <TableCell>
+                  <TableCell className="hidden sm:table-cell">
                     <Badge intent="secondary">{titleCase(a.account_type)}</Badge>
                   </TableCell>
                   <TableCell className="text-right tabular-nums">

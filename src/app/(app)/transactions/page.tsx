@@ -456,13 +456,15 @@ export default function TransactionsPage() {
             </Button>
           </div>
         </CardHeader>
-        <CardContent className="flex-1 overflow-auto p-0 [&_table]:min-w-[720px]">
+        <CardContent
+          className="flex-1 overflow-auto p-0"
+          style={{ "--gutter": "1rem" } as React.CSSProperties}
+        >
           <Table
             allowResize
             aria-label="Transactions"
             sortDescriptor={sortDescriptor}
             onSortChange={(d) => setSortDescriptor(d as SortDesc)}
-            style={{ "--gutter": "1rem" } as React.CSSProperties}
           >
             <IntentTableHeader>
               <TableColumn id="date" isRowHeader allowsSorting>
@@ -471,10 +473,19 @@ export default function TransactionsPage() {
               <TableColumn id="description" allowsSorting isResizable className="w-full">
                 Description
               </TableColumn>
-              <TableColumn id="reference" allowsSorting isResizable>
+              <TableColumn
+                id="reference"
+                allowsSorting
+                isResizable
+                className="hidden md:table-cell"
+              >
                 Reference
               </TableColumn>
-              <TableColumn id="transaction_type" allowsSorting>
+              <TableColumn
+                id="transaction_type"
+                allowsSorting
+                className="hidden sm:table-cell"
+              >
                 Type
               </TableColumn>
               <TableColumn id="amount" allowsSorting>
@@ -498,8 +509,10 @@ export default function TransactionsPage() {
                   <TableRow id={t.id} onAction={() => editTxn(t)}>
                     <TableCell className="font-mono text-xs">{t.date}</TableCell>
                     <TableCell className="font-medium">{t.description}</TableCell>
-                    <TableCell className="text-muted-fg">{t.reference}</TableCell>
-                    <TableCell>
+                    <TableCell className="hidden md:table-cell text-muted-fg">
+                      {t.reference}
+                    </TableCell>
+                    <TableCell className="hidden sm:table-cell">
                       <Badge intent={TYPE_INTENT[txnType] ?? "primary"}>
                         {titleCase(txnType)}
                       </Badge>
