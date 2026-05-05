@@ -48,6 +48,7 @@ import {
   IconTag,
 } from "@/components/icons"
 import { usePathname } from "next/navigation"
+import { useEffect, useState } from "react"
 
 const titles: Record<string, string> = {
   "/": "Dashboard",
@@ -67,6 +68,13 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const session = auth.useSession()
   const user = session.data?.user
   const { theme, setTheme } = useTheme()
+  const [txCount, setTxCount] = useState<number | null>(null)
+  useEffect(() => {
+    fetch("/api/transactions/count_recent")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => d && setTxCount(d.count))
+      .catch(() => {})
+  }, [pathname])
   const initials = (() => {
     const name = user?.name?.trim()
     if (name) {
@@ -84,7 +92,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         </SidebarHeader>
         <SidebarContent>
           <SidebarSectionGroup>
-            <SidebarSection title="Workspace">
+            <SidebarSection label="Books">
               <SidebarItem href="/" isCurrent={pathname === "/"}>
                 <IconHome />
                 <SidebarLabel>Dashboard</SidebarLabel>
@@ -92,6 +100,11 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               <SidebarItem
                 href="/transactions"
                 isCurrent={pathname === "/transactions"}
+                badge={
+                  txCount && txCount > 0
+                    ? `${txCount} this week`
+                    : undefined
+                }
               >
                 <IconArrowLeftRight />
                 <SidebarLabel>Transactions</SidebarLabel>
@@ -122,7 +135,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 <SidebarLabel>Import</SidebarLabel>
               </SidebarItem>
             </SidebarSection>
-            <SidebarSection title="Reports">
+            <SidebarSection label="Reporting">
               <SidebarItem
                 href="/reports/pnl"
                 isCurrent={pathname === "/reports/pnl"}
