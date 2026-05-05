@@ -394,7 +394,7 @@ export default function TransactionsPage() {
               aria-label="Type"
               selectedKey={type}
               onSelectionChange={(k) => setType(String(k))}
-              className="w-[160px]"
+              className="w-full sm:w-[160px]"
             >
               <SelectTrigger />
               <SelectContent>
@@ -406,10 +406,10 @@ export default function TransactionsPage() {
                 ))}
               </SelectContent>
             </Select>
-            <div className="flex items-center gap-1">
+            <div className="flex w-full items-center gap-1 sm:w-auto">
               <DateRangePicker
                 aria-label="Date range"
-                className="w-[280px]"
+                className="w-full sm:w-[280px]"
                 value={
                   from && to
                     ? { start: parseDate(from), end: parseDate(to) }
