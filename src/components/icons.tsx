@@ -16,4 +16,5 @@ export {
   MagnifyingGlassIcon as IconSearch,
   XMarkIcon as IconX,
   TagIcon as IconTag,
+  ClockIcon as IconActivity,
 } from "@heroicons/react/24/outline"

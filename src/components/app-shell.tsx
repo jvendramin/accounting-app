@@ -35,6 +35,7 @@ import {
 } from "@heroicons/react/24/outline"
 import { auth } from "@/lib/auth"
 import { useTheme } from "@/components/theme-provider"
+import { ActivityLogSheet } from "@/components/activity-log"
 import {
   IconCircleQuestionmark,
   IconChartBar,
@@ -46,6 +47,7 @@ import {
   IconArrowLeftRight,
   IconLogout,
   IconTag,
+  IconActivity,
 } from "@/components/icons"
 import { usePathname } from "next/navigation"
 import { useEffect, useState } from "react"
@@ -69,6 +71,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const user = session.data?.user
   const { theme, setTheme } = useTheme()
   const [txCount, setTxCount] = useState<number | null>(null)
+  const [activityOpen, setActivityOpen] = useState(false)
   useEffect(() => {
     fetch("/api/transactions/count_recent")
       .then((r) => (r.ok ? r.json() : null))
@@ -133,6 +136,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               <SidebarItem href="/import" isCurrent={pathname === "/import"}>
                 <IconUpload />
                 <SidebarLabel>Import</SidebarLabel>
+              </SidebarItem>
+              <SidebarItem onPress={() => setActivityOpen(true)}>
+                <IconActivity />
+                <SidebarLabel>Activity</SidebarLabel>
               </SidebarItem>
             </SidebarSection>
             <SidebarSection label="Reporting">
@@ -240,6 +247,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           {children}
         </main>
       </SidebarInset>
+      <ActivityLogSheet
+        isOpen={activityOpen}
+        onOpenChange={setActivityOpen}
+      />
     </SidebarProvider>
   )
 }
