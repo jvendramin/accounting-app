@@ -105,7 +105,8 @@ export default function ReceiptsPage() {
         date: string
         account_id: number | null
         category_id: number | null
-        reasoning: string
+        reasoning_summary: string
+        reasoning_steps: string[]
       }>("/api/receipts/analyze", {
         image_url: file.public_url,
         filename: file.filename,
@@ -140,7 +141,8 @@ export default function ReceiptsPage() {
         date: string
         account_id: number | null
         category_id: number | null
-        reasoning: string
+        reasoning_summary: string
+        reasoning_steps: string[]
       }>("/api/receipts/analyze", {
         image_url: r.url,
         filename: r.filename,

@@ -40,6 +40,14 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Tab, TabList, Tabs } from "@/components/ui/tabs"
+import {
+  ChainOfThought,
+  ChainOfThoughtContent,
+  ChainOfThoughtItem,
+  ChainOfThoughtStep,
+  ChainOfThoughtTrigger,
+} from "@/components/chain-of-thought"
+import { SparklesIcon } from "@heroicons/react/24/outline"
 import { DatePicker, DatePickerTrigger } from "@/components/ui/date-picker"
 import {
   DateRangePicker,
@@ -161,7 +169,10 @@ export default function TransactionsPage() {
 
   const [open, setOpen] = useState(false)
   const [showFilters, setShowFilters] = useState(false)
-  const [aiReason, setAiReason] = useState<string | null>(null)
+  const [aiReason, setAiReason] = useState<{
+    summary: string
+    steps: string[]
+  } | null>(null)
 
   // Auto-open the create modal when arrived via ?new=1 (from Dashboard quick-create).
   const searchParams = useSearchParams()
@@ -184,7 +195,8 @@ export default function TransactionsPage() {
             date?: string
             account_id?: number | null
             category_id?: number | null
-            reasoning?: string | null
+            reasoning_summary?: string | null
+            reasoning_steps?: string[] | null
           }
           setEditingId(null)
           setTab("simple")
@@ -197,7 +209,14 @@ export default function TransactionsPage() {
             account_id: r.account_id ?? undefined,
             category_id: r.category_id ?? undefined,
           })
-          setAiReason(r.reasoning ?? null)
+          setAiReason(
+            r.reasoning_summary || (r.reasoning_steps && r.reasoning_steps.length)
+              ? {
+                  summary: r.reasoning_summary ?? "",
+                  steps: r.reasoning_steps ?? [],
+                }
+              : null,
+          )
           setOpen(true)
         } catch {}
       }
@@ -634,9 +653,34 @@ export default function TransactionsPage() {
           </ModalHeader>
           <ModalBody>
             {aiReason && (
-              <div className="mb-3 rounded-lg border border-primary/20 bg-primary/5 px-3 py-2 text-xs text-fg/80">
-                <span className="font-medium text-primary">AI suggestion · </span>
-                {aiReason}
+              <div className="mb-4 rounded-lg border border-primary/20 bg-primary/5 px-3 py-3">
+                <div className="mb-2 flex items-center gap-2 text-xs font-medium text-primary">
+                  <SparklesIcon className="size-3.5" />
+                  AI suggestion
+                </div>
+                <p className="mb-2 text-sm font-medium text-fg">
+                  {aiReason.summary}
+                </p>
+                {aiReason.steps.length > 0 && (
+                  <ChainOfThought>
+                    {aiReason.steps.map((step, i) => {
+                      const [head, ...rest] = step.split(":")
+                      const detail = rest.join(":").trim()
+                      return (
+                        <ChainOfThoughtStep key={i} defaultOpen={i === 0}>
+                          <ChainOfThoughtTrigger>
+                            {head.trim()}
+                          </ChainOfThoughtTrigger>
+                          {detail && (
+                            <ChainOfThoughtContent>
+                              <ChainOfThoughtItem>{detail}</ChainOfThoughtItem>
+                            </ChainOfThoughtContent>
+                          )}
+                        </ChainOfThoughtStep>
+                      )
+                    })}
+                  </ChainOfThought>
+                )}
               </div>
             )}
             <Tabs

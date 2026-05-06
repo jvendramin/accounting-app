@@ -32,7 +32,10 @@ Return STRICT JSON matching exactly this shape (no prose, no markdown):
   "currency":    string | null,     // 3-letter, e.g. "USD"
   "account_id":  number,            // pick the BEST cash account this came from (the bank/card account paying)
   "category_id": number,            // pick the BEST expense category for what was bought
-  "reasoning":   string             // 1-2 sentences explaining your account+category picks
+  "reasoning_summary": string,      // ≤ 12-word headline of what you concluded
+  "reasoning_steps":   string[]     // 3-5 short steps showing how you got there.
+                                    // Format each step as "Title: detail" (e.g.
+                                    // "Read receipt: Stripe deposit, $4,750").
 }
 
 Available cash/asset accounts (pick one for "account_id"):
@@ -125,7 +128,15 @@ export async function POST(req: Request) {
     category_id: validCategoryIds.has(pickedCategory)
       ? pickedCategory
       : (expenseAccounts[0]?.id ?? null),
-    reasoning: typeof parsed.reasoning === "string" ? parsed.reasoning : "",
+    reasoning_summary:
+      typeof parsed.reasoning_summary === "string"
+        ? parsed.reasoning_summary
+        : typeof parsed.reasoning === "string"
+          ? parsed.reasoning
+          : "",
+    reasoning_steps: Array.isArray(parsed.reasoning_steps)
+      ? parsed.reasoning_steps.map((s: any) => String(s))
+      : [],
   }
 
   // Persist the analysis on the receipt row so we can show "analyzed" badges
