@@ -3,6 +3,7 @@ import {
   bigint,
   bigserial,
   date,
+  integer,
   numeric,
   pgTable,
   text,
@@ -61,11 +62,15 @@ export const journalLines = pgTable("journal_lines", {
 export const receipts = pgTable("receipts", {
   id: bigserial("id", { mode: "number" }).primaryKey(),
   transactionId: bigint("transaction_id", { mode: "number" }),
-  filename: varchar("filename"),
+  filename: varchar("filename").notNull(),
   contentType: varchar("content_type"),
-  byteSize: bigint("byte_size", { mode: "number" }),
-  storageKey: varchar("storage_key"),
-  uploaderSub: varchar("uploader_sub"),
+  size: integer("size"),
+  s3Key: varchar("s3_key"),
+  url: varchar("url"),
+  userSub: varchar("user_sub"),
+  folder: varchar("folder"),
+  bucket: varchar("bucket"),
+  etag: varchar("etag"),
   createdAt: timestamp("created_at", { precision: 6, mode: "date" })
     .defaultNow()
     .notNull(),
@@ -112,6 +117,14 @@ export const categories = pgTable("categories", {
 })
 
 export type Category = typeof categories.$inferSelect
+
+export const userPreferences = pgTable("user_preferences", {
+  userSub: varchar("user_sub").primaryKey(),
+  prefs: text("prefs").notNull().default("{}"),
+  updatedAt: timestamp("updated_at", { precision: 6, mode: "date" })
+    .defaultNow()
+    .notNull(),
+})
 
 export type Account = typeof accounts.$inferSelect
 export type Transaction = typeof transactions.$inferSelect

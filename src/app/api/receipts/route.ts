@@ -12,7 +12,7 @@ export async function GET(req: Request) {
     ? await db
         .select()
         .from(receipts)
-        .where(eq(receipts.uploaderSub, userSub))
+        .where(eq(receipts.userSub, userSub))
         .orderBy(desc(receipts.createdAt))
     : await db.select().from(receipts).orderBy(desc(receipts.createdAt))
   return NextResponse.json(
@@ -20,10 +20,14 @@ export async function GET(req: Request) {
       id: r.id,
       filename: r.filename,
       content_type: r.contentType,
-      byte_size: r.byteSize,
-      storage_key: r.storageKey,
+      byte_size: r.size, // legacy field name kept for client compat
+      storage_key: r.s3Key,
+      url: r.url,
       transaction_id: r.transactionId,
-      uploader_sub: r.uploaderSub,
+      uploader_sub: r.userSub,
+      folder: r.folder,
+      bucket: r.bucket,
+      etag: r.etag,
       created_at: r.createdAt,
     })),
   )
@@ -31,12 +35,16 @@ export async function GET(req: Request) {
 
 const Input = z.object({
   receipt: z.object({
-    filename: z.string().nullish(),
+    filename: z.string().min(1),
     content_type: z.string().nullish(),
     byte_size: z.coerce.number().nullish(),
     storage_key: z.string().nullish(),
+    url: z.string().nullish(),
     transaction_id: z.coerce.number().nullish(),
     uploader_sub: z.string().nullish(),
+    folder: z.string().nullish(),
+    bucket: z.string().nullish(),
+    etag: z.string().nullish(),
   }),
 })
 
@@ -46,12 +54,16 @@ export async function POST(req: Request) {
   const [created] = await db
     .insert(receipts)
     .values({
-      filename: r.filename ?? null,
+      filename: r.filename,
       contentType: r.content_type ?? null,
-      byteSize: r.byte_size ?? 0,
-      storageKey: r.storage_key ?? null,
+      size: r.byte_size ?? null,
+      s3Key: r.storage_key ?? null,
+      url: r.url ?? null,
       transactionId: r.transaction_id ?? null,
-      uploaderSub: r.uploader_sub ?? null,
+      userSub: r.uploader_sub ?? null,
+      folder: r.folder ?? null,
+      bucket: r.bucket ?? null,
+      etag: r.etag ?? null,
     })
     .returning()
   return NextResponse.json(created, { status: 201 })
