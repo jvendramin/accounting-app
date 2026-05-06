@@ -39,6 +39,12 @@ export async function POST(req: Request) {
     credentials: { accessKeyId, secretAccessKey },
     endpoint,
     forcePathStyle: !!endpoint,
+    // AWS SDK v3 (≥3.729) auto-adds an x-amz-checksum-crc32 query param on
+    // presigned PUTs based on a phantom empty body. Backblaze enforces the
+    // checksum strictly, so the browser's actual body fails validation.
+    // Disable auto-checksum so the signed URL doesn't carry that param.
+    requestChecksumCalculation: "WHEN_REQUIRED",
+    responseChecksumValidation: "WHEN_REQUIRED",
   })
 
   const userSub = body.user_sub || "anonymous"
