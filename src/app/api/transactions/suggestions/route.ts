@@ -4,10 +4,11 @@ import { db } from "@/lib/db"
 
 export const dynamic = "force-dynamic"
 
-// Smart suggestions:
-//  - rows from the same calendar week, one month ago
-//  - that the user has NOT already entered this month (matched by description)
-//  - that the user has NOT dismissed for the *current* target week
+// Suggestions: rows from the same calendar week, one month ago, that the user
+// has NOT dismissed for the current week. We *do not* hide rows already
+// entered this month — instead we mark them so the UI can show them with an
+// "Already created this month" cue. Hiding them was confusing: users wanted
+// to keep seeing the recurring pattern even after acting on it.
 export async function GET() {
   const rows = await db.execute(sql`
     with target_week as (
@@ -23,6 +24,11 @@ export async function GET() {
         where lower(t2.description) = lower(t.description)
           and t2.date <= t.date
       ) as occurrences,
+      (
+        select max(t2.date) from transactions t2
+        where lower(t2.description) = lower(t.description)
+          and t2.date >= date_trunc('month', current_date)
+      ) as last_this_month,
       coalesce(json_agg(json_build_object(
         'id', jl.id,
         'account_id', jl.account_id,
@@ -38,17 +44,18 @@ export async function GET() {
     where t.date >= tw.start_d
       and t.date < tw.start_d + interval '7 days'
       and not exists (
-        select 1 from transactions t2
-        where lower(t2.description) = lower(t.description)
-          and t2.date >= date_trunc('month', current_date)
-      )
-      and not exists (
         select 1 from dismissed_suggestions ds
         where ds.source_transaction_id = t.id
           and ds.dismissed_for_week_start = tw.current_week
       )
     group by t.id, tw.current_week
-    order by t.date asc, t.id asc
+    -- Already-done items go to the bottom; recurring count breaks ties.
+    order by (case when (
+      select count(*) from transactions t2
+      where lower(t2.description) = lower(t.description)
+        and t2.date >= date_trunc('month', current_date)
+    ) > 0 then 1 else 0 end) asc,
+      t.date asc, t.id asc
     limit 20
   `)
   return NextResponse.json(rows.rows)

@@ -48,6 +48,7 @@ type Suggestion = {
   transaction_type: string
   amount: number
   occurrences: number
+  last_this_month: string | null
   journal_lines: Array<{
     id?: number
     account_id: number
@@ -58,14 +59,20 @@ type Suggestion = {
   }>
 }
 
-function suggestionReason(s: Suggestion): string {
-  const niceDate = new Date(`${s.date}T00:00:00`).toLocaleDateString(undefined, {
+const niceDate = (iso: string) =>
+  new Date(`${iso.slice(0, 10)}T00:00:00`).toLocaleDateString(undefined, {
     month: "short",
     day: "numeric",
   })
-  if (s.occurrences >= 3) return `Recurring (${s.occurrences}× before) — last on ${niceDate}`
-  if (s.occurrences === 2) return `Seen twice before — last on ${niceDate}`
-  return `Same week last month — ${niceDate}`
+
+function suggestionReason(s: Suggestion): string {
+  if (s.last_this_month) {
+    return `Already created this month on ${niceDate(s.last_this_month)}`
+  }
+  if (s.occurrences >= 3)
+    return `Recurring (${s.occurrences}× before) — last on ${niceDate(s.date)}`
+  if (s.occurrences === 2) return `Seen twice before — last on ${niceDate(s.date)}`
+  return `Same week last month — ${niceDate(s.date)}`
 }
 
 type PnL = {
@@ -260,6 +267,11 @@ export default function DashboardPage() {
                       <Badge intent="secondary" className="shrink-0">
                         {titleCase(s.transaction_type)}
                       </Badge>
+                      {s.last_this_month && (
+                        <Badge intent="success" className="shrink-0">
+                          Done
+                        </Badge>
+                      )}
                     </div>
                     <div className="text-xs text-muted-fg truncate">
                       {suggestionReason(s)}
