@@ -17,4 +17,5 @@ export {
   XMarkIcon as IconX,
   TagIcon as IconTag,
   ClockIcon as IconActivity,
+  CalculatorIcon as IconTax,
 } from "@heroicons/react/24/outline"

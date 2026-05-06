@@ -2,6 +2,7 @@ import { relations } from "drizzle-orm"
 import {
   bigint,
   bigserial,
+  boolean,
   date,
   integer,
   numeric,
@@ -119,6 +120,28 @@ export const categories = pgTable("categories", {
 })
 
 export type Category = typeof categories.$inferSelect
+
+export const taxes = pgTable("taxes", {
+  id: bigserial("id", { mode: "number" }).primaryKey(),
+  name: varchar("name").notNull(),
+  rate: numeric("rate", { precision: 7, scale: 4 }).notNull(),
+  description: text("description"),
+  isActive: boolean("is_active").notNull().default(true),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+})
+
+export const transactionTaxes = pgTable("transaction_taxes", {
+  id: bigserial("id", { mode: "number" }).primaryKey(),
+  transactionId: bigint("transaction_id", { mode: "number" }).notNull(),
+  taxId: bigint("tax_id", { mode: "number" }).notNull(),
+  rate: numeric("rate", { precision: 7, scale: 4 }).notNull(),
+  taxAmount: numeric("tax_amount", { precision: 14, scale: 2 }).notNull(),
+  netAmount: numeric("net_amount", { precision: 14, scale: 2 }).notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+})
+
+export type Tax = typeof taxes.$inferSelect
 
 export const userPreferences = pgTable("user_preferences", {
   userSub: varchar("user_sub").primaryKey(),

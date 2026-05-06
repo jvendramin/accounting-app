@@ -84,7 +84,10 @@ type SimpleForm = {
   account_id?: number
   category_id?: number
   amount: number
+  tax_ids?: number[]
 }
+
+type TaxRow = { id: number; name: string; rate: number; is_active: boolean }
 type JournalForm = {
   date: string
   description: string
@@ -152,6 +155,14 @@ export default function TransactionsPage() {
   const { data: accountsData } = useCachedFetch<Account[]>(
     "accounts:all",
     () => api.get("/api/accounts"),
+  )
+  const { data: taxesData } = useCachedFetch<TaxRow[]>(
+    "taxes:all",
+    () => api.get("/api/taxes"),
+  )
+  const activeTaxes = useMemo(
+    () => (taxesData ?? []).filter((t) => t.is_active),
+    [taxesData],
   )
   const accounts = useMemo(() => accountsData ?? [], [accountsData])
   const cashAccounts = useMemo(
@@ -347,6 +358,7 @@ export default function TransactionsPage() {
         amount: Number(t.amount),
         account_id: accountLine?.account_id,
         category_id: categoryLine?.account_id,
+        tax_ids: (t as any).tax_ids ?? [],
       })
     }
     setOpen(true)
@@ -414,6 +426,9 @@ export default function TransactionsPage() {
           transaction_type: simple.kind,
           amount: simple.amount,
           journal_lines_attributes: lines,
+          ...(simple.kind === "deposit" && simple.tax_ids?.length
+            ? { tax_ids: simple.tax_ids }
+            : {}),
         },
       }
     } else {
@@ -797,6 +812,79 @@ export default function TransactionsPage() {
                   <Label>Description</Label>
                   <Input placeholder="Write a description" />
                 </TextField>
+                {simple.kind === "deposit" && activeTaxes.length > 0 && (
+                  <div className="grid gap-2">
+                    <Label>Taxes (inclusive in total)</Label>
+                    <div className="flex flex-wrap gap-2">
+                      {activeTaxes.map((t) => {
+                        const selected = simple.tax_ids?.includes(t.id) ?? false
+                        return (
+                          <button
+                            key={t.id}
+                            type="button"
+                            onClick={() =>
+                              setSimple({
+                                ...simple,
+                                tax_ids: selected
+                                  ? (simple.tax_ids ?? []).filter(
+                                      (i) => i !== t.id,
+                                    )
+                                  : [...(simple.tax_ids ?? []), t.id],
+                              })
+                            }
+                            className={
+                              "rounded-full border px-3 py-1 text-xs transition " +
+                              (selected
+                                ? "border-primary bg-primary/15 text-primary"
+                                : "border-border hover:border-fg/30")
+                            }
+                          >
+                            {t.name} {(t.rate * 100).toFixed(2)}%
+                          </button>
+                        )
+                      })}
+                    </div>
+                    {simple.tax_ids && simple.tax_ids.length > 0 && simple.amount > 0 && (() => {
+                      const selected = activeTaxes.filter((t) =>
+                        simple.tax_ids!.includes(t.id),
+                      )
+                      const sumRates = selected.reduce(
+                        (s, t) => s + Number(t.rate),
+                        0,
+                      )
+                      const net = simple.amount / (1 + sumRates)
+                      return (
+                        <div className="rounded-md border bg-muted/30 px-3 py-2 text-xs grid gap-1">
+                          <div className="flex justify-between">
+                            <span className="text-muted-fg">Net (excl. tax)</span>
+                            <span className="font-mono tabular-nums">
+                              {fmtMoney(+net.toFixed(2))}
+                            </span>
+                          </div>
+                          {selected.map((t) => (
+                            <div
+                              key={t.id}
+                              className="flex justify-between text-muted-fg"
+                            >
+                              <span>
+                                {t.name} {(t.rate * 100).toFixed(2)}%
+                              </span>
+                              <span className="font-mono tabular-nums">
+                                {fmtMoney(+(net * Number(t.rate)).toFixed(2))}
+                              </span>
+                            </div>
+                          ))}
+                          <div className="flex justify-between border-t pt-1 font-semibold">
+                            <span>Total</span>
+                            <span className="font-mono tabular-nums">
+                              {fmtMoney(simple.amount)}
+                            </span>
+                          </div>
+                        </div>
+                      )
+                    })()}
+                  </div>
+                )}
               </div>
             ) : (
               <div className="grid gap-4">

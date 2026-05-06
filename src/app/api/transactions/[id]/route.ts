@@ -1,7 +1,13 @@
 import { NextResponse } from "next/server"
-import { eq } from "drizzle-orm"
+import { eq, inArray } from "drizzle-orm"
 import { z } from "zod"
-import { db, transactions, journalLines } from "@/lib/db"
+import {
+  db,
+  transactions,
+  journalLines,
+  taxes,
+  transactionTaxes,
+} from "@/lib/db"
 
 const Line = z.object({
   account_id: z.number(),
@@ -19,6 +25,7 @@ const Input = z.object({
       .optional(),
     amount: z.coerce.number().optional(),
     journal_lines_attributes: z.array(Line).optional(),
+    tax_ids: z.array(z.coerce.number()).optional(),
   }),
 })
 
@@ -57,6 +64,34 @@ export async function PUT(
           memo: l.memo ?? null,
         })),
       )
+    }
+  }
+  // Replace tax breakdown if tax_ids provided. Deposit-only spec.
+  if (t.tax_ids !== undefined) {
+    await db
+      .delete(transactionTaxes)
+      .where(eq(transactionTaxes.transactionId, txId))
+    const finalTotal =
+      t.amount !== undefined ? Number(t.amount) : Number(updated.amount ?? 0)
+    const finalType = t.transaction_type ?? updated.transactionType
+    if (finalType === "deposit" && t.tax_ids.length > 0) {
+      const found = await db
+        .select()
+        .from(taxes)
+        .where(inArray(taxes.id, t.tax_ids))
+      if (found.length > 0) {
+        const sumRates = found.reduce((s, x) => s + Number(x.rate), 0)
+        const net = finalTotal / (1 + sumRates)
+        await db.insert(transactionTaxes).values(
+          found.map((x) => ({
+            transactionId: txId,
+            taxId: x.id,
+            rate: String(x.rate),
+            taxAmount: String(+(net * Number(x.rate)).toFixed(2)),
+            netAmount: String(+net.toFixed(2)),
+          })),
+        )
+      }
     }
   }
   return NextResponse.json(updated)

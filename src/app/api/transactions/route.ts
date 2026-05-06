@@ -1,7 +1,14 @@
 import { NextResponse } from "next/server"
 import { sql, and, eq, gte, lte, ilike, or, inArray } from "drizzle-orm"
 import { z } from "zod"
-import { db, transactions, journalLines, accounts } from "@/lib/db"
+import {
+  db,
+  transactions,
+  journalLines,
+  accounts,
+  taxes,
+  transactionTaxes,
+} from "@/lib/db"
 
 export const dynamic = "force-dynamic"
 
@@ -61,12 +68,35 @@ export async function GET(req: Request) {
     byTx.set(Number(r.transaction_id), arr)
   }
 
+  // Tax breakdown per transaction
+  const taxRows = await db
+    .select()
+    .from(transactionTaxes)
+    .where(inArray(transactionTaxes.transactionId, txIds))
+  const taxByTx = new Map<number, number[]>()
+  const taxBreakdownByTx = new Map<number, any[]>()
+  for (const r of taxRows) {
+    const arr = taxByTx.get(r.transactionId) ?? []
+    arr.push(r.taxId)
+    taxByTx.set(r.transactionId, arr)
+    const br = taxBreakdownByTx.get(r.transactionId) ?? []
+    br.push({
+      tax_id: r.taxId,
+      rate: Number(r.rate),
+      tax_amount: Number(r.taxAmount),
+      net_amount: Number(r.netAmount),
+    })
+    taxBreakdownByTx.set(r.transactionId, br)
+  }
+
   return NextResponse.json(
     txs.map((t) => ({
       ...t,
       amount: Number(t.amount ?? 0),
       journal_lines: byTx.get(t.id) ?? [],
       receipts: [],
+      tax_ids: taxByTx.get(t.id) ?? [],
+      tax_breakdown: taxBreakdownByTx.get(t.id) ?? [],
     })),
   )
 }
@@ -90,8 +120,36 @@ const Input = z.object({
     ]),
     amount: z.coerce.number(),
     journal_lines_attributes: z.array(Line),
+    tax_ids: z.array(z.coerce.number()).optional(),
   }),
 })
+
+// Tax math (inclusive): grand total contains the taxes. Net = total / (1 + Σrates).
+async function applyTaxes(
+  txId: number,
+  total: number,
+  taxIds: number[] | undefined,
+) {
+  if (!taxIds || taxIds.length === 0) return
+  const found = await db
+    .select()
+    .from(taxes)
+    .where(inArray(taxes.id, taxIds))
+  if (found.length === 0) return
+  const sumRates = found.reduce((s, t) => s + Number(t.rate), 0)
+  const net = total / (1 + sumRates)
+  const rows = found.map((t) => {
+    const taxAmount = +(net * Number(t.rate)).toFixed(2)
+    return {
+      transactionId: txId,
+      taxId: t.id,
+      rate: String(t.rate),
+      taxAmount: String(taxAmount),
+      netAmount: String(+net.toFixed(2)),
+    }
+  })
+  await db.insert(transactionTaxes).values(rows)
+}
 
 export async function POST(req: Request) {
   const body = Input.parse(await req.json())
@@ -115,6 +173,10 @@ export async function POST(req: Request) {
         memo: l.memo ?? null,
       })),
     )
+  }
+  // Tax breakdown applies to deposits only (per current spec).
+  if (body.transaction.transaction_type === "deposit") {
+    await applyTaxes(tx.id, body.transaction.amount, body.transaction.tax_ids)
   }
   return NextResponse.json(tx, { status: 201 })
 }

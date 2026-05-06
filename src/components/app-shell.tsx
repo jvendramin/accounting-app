@@ -47,6 +47,7 @@ import {
   IconLogout,
   IconTag,
   IconActivity,
+  IconTax,
 } from "@/components/icons"
 import { usePathname } from "next/navigation"
 import { useEffect, useState } from "react"
@@ -56,6 +57,8 @@ const titles: Record<string, string> = {
   "/transactions": "Transactions",
   "/accounts": "Chart of Accounts",
   "/categories": "Categories",
+  "/taxes": "Taxes",
+  "/reports/taxes": "Tax Report",
   "/receipts": "Receipts",
   "/import": "Import",
   "/activity": "Activity",
@@ -126,6 +129,13 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 <SidebarLabel>Categories</SidebarLabel>
               </SidebarItem>
               <SidebarItem
+                href="/taxes"
+                isCurrent={pathname === "/taxes"}
+              >
+                <IconTax />
+                <SidebarLabel>Taxes</SidebarLabel>
+              </SidebarItem>
+              <SidebarItem
                 href="/receipts"
                 isCurrent={pathname === "/receipts"}
               >
@@ -165,6 +175,13 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               >
                 <IconWallet />
                 <SidebarLabel>Cashflow</SidebarLabel>
+              </SidebarItem>
+              <SidebarItem
+                href="/reports/taxes"
+                isCurrent={pathname === "/reports/taxes"}
+              >
+                <IconTax />
+                <SidebarLabel>Tax Report</SidebarLabel>
               </SidebarItem>
             </SidebarSection>
           </SidebarSectionGroup>
