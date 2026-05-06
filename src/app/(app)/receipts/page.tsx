@@ -103,6 +103,9 @@ export default function ReceiptsPage() {
         reference: string | null
         amount: number
         date: string
+        account_id: number | null
+        category_id: number | null
+        reasoning: string
       }>("/api/receipts/analyze", {
         image_url: file.public_url,
         filename: file.filename,
@@ -135,6 +138,9 @@ export default function ReceiptsPage() {
         reference: string | null
         amount: number
         date: string
+        account_id: number | null
+        category_id: number | null
+        reasoning: string
       }>("/api/receipts/analyze", {
         image_url: r.url,
         filename: r.filename,

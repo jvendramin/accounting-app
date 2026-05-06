@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server"
 import OpenAI from "openai"
 import { z } from "zod"
-import { eq } from "drizzle-orm"
+import { sql, eq } from "drizzle-orm"
 import { db, receipts } from "@/lib/db"
 
 export const runtime = "nodejs"
@@ -13,17 +13,36 @@ const Input = z.object({
   receipt_id: z.coerce.number().optional(),
 })
 
-const SYSTEM = `You extract structured data from receipt images for a bookkeeping app.
+function buildSystem(
+  cashAccounts: Array<{ id: number; code: string | null; name: string }>,
+  expenseAccounts: Array<{ id: number; code: string | null; name: string }>,
+) {
+  const fmt = (rows: typeof cashAccounts) =>
+    rows.map((r) => `- id=${r.id} | ${r.code ?? "—"} ${r.name}`).join("\n") || "(none)"
+
+  return `You extract structured data from receipt images for a bookkeeping app and pick the best-fitting account + category.
+
+ALWAYS return ALL fields. Make a best guess if uncertain — do not return nulls except where explicitly allowed.
 Return STRICT JSON matching exactly this shape (no prose, no markdown):
 {
   "description": string,            // short merchant + purpose, e.g. "Starbucks coffee"
   "reference":   string | null,     // invoice/receipt number if visible, else null
-  "amount":      number,            // total paid, positive number
-  "date":        string,            // ISO YYYY-MM-DD; if not present, today
+  "amount":      number,            // total paid, positive
+  "date":        string,            // ISO YYYY-MM-DD; default to today if missing
   "currency":    string | null,     // 3-letter, e.g. "USD"
-  "category_hint": string | null    // best-guess expense category, e.g. "Meals"
+  "account_id":  number,            // pick the BEST cash account this came from (the bank/card account paying)
+  "category_id": number,            // pick the BEST expense category for what was bought
+  "reasoning":   string             // 1-2 sentences explaining your account+category picks
 }
-If the image isn't a receipt or you can't extract a value, use null (or 0 for amount).`
+
+Available cash/asset accounts (pick one for "account_id"):
+${fmt(cashAccounts)}
+
+Available expense categories (pick one for "category_id"):
+${fmt(expenseAccounts)}
+
+Use only ids that appear above. If you can't read the receipt at all, return amount: 0 with the most generic account/category ids and explain in reasoning.`
+}
 
 export async function POST(req: Request) {
   const apiKey = process.env.OPENROUTER_API_KEY
@@ -35,6 +54,20 @@ export async function POST(req: Request) {
     )
   }
   const body = Input.parse(await req.json())
+
+  // Pull the live account catalog so the model can pick valid ids.
+  const accountsRows = await db.execute(sql`
+    select id, code, name, account_type from accounts order by account_type, code nulls last
+  `)
+  const allAccounts = accountsRows.rows as Array<{
+    id: number
+    code: string | null
+    name: string
+    account_type: string
+  }>
+  const cashAccounts = allAccounts.filter((a) => a.account_type === "asset")
+  const expenseAccounts = allAccounts.filter((a) => a.account_type === "expense")
+  const SYSTEM = buildSystem(cashAccounts, expenseAccounts)
 
   const client = new OpenAI({
     apiKey,
@@ -75,13 +108,24 @@ export async function POST(req: Request) {
     parsed = m ? JSON.parse(m[0]) : {}
   }
 
+  const validAccountIds = new Set(cashAccounts.map((a) => a.id))
+  const validCategoryIds = new Set(expenseAccounts.map((a) => a.id))
+  const pickedAccount = Number(parsed.account_id)
+  const pickedCategory = Number(parsed.category_id)
+
   const result = {
     description: parsed.description ?? "",
     reference: parsed.reference ?? null,
     amount: Number(parsed.amount) || 0,
     date: parsed.date ?? new Date().toISOString().slice(0, 10),
     currency: parsed.currency ?? null,
-    category_hint: parsed.category_hint ?? null,
+    account_id: validAccountIds.has(pickedAccount)
+      ? pickedAccount
+      : (cashAccounts[0]?.id ?? null),
+    category_id: validCategoryIds.has(pickedCategory)
+      ? pickedCategory
+      : (expenseAccounts[0]?.id ?? null),
+    reasoning: typeof parsed.reasoning === "string" ? parsed.reasoning : "",
   }
 
   // Persist the analysis on the receipt row so we can show "analyzed" badges

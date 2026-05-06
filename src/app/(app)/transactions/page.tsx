@@ -161,6 +161,7 @@ export default function TransactionsPage() {
 
   const [open, setOpen] = useState(false)
   const [showFilters, setShowFilters] = useState(false)
+  const [aiReason, setAiReason] = useState<string | null>(null)
 
   // Auto-open the create modal when arrived via ?new=1 (from Dashboard quick-create).
   const searchParams = useSearchParams()
@@ -181,6 +182,9 @@ export default function TransactionsPage() {
             reference?: string | null
             amount?: number
             date?: string
+            account_id?: number | null
+            category_id?: number | null
+            reasoning?: string | null
           }
           setEditingId(null)
           setTab("simple")
@@ -190,7 +194,10 @@ export default function TransactionsPage() {
             reference: r.reference ?? "",
             kind: "withdrawal",
             amount: Number(r.amount) || 0,
+            account_id: r.account_id ?? undefined,
+            category_id: r.category_id ?? undefined,
           })
+          setAiReason(r.reasoning ?? null)
           setOpen(true)
         } catch {}
       }
@@ -614,7 +621,10 @@ export default function TransactionsPage() {
         isOpen={open}
         onOpenChange={(v) => {
           setOpen(v)
-          if (!v) resetForms()
+          if (!v) {
+            resetForms()
+            setAiReason(null)
+          }
         }}
       >
           <ModalHeader>
@@ -623,6 +633,12 @@ export default function TransactionsPage() {
             </ModalTitle>
           </ModalHeader>
           <ModalBody>
+            {aiReason && (
+              <div className="mb-3 rounded-lg border border-primary/20 bg-primary/5 px-3 py-2 text-xs text-fg/80">
+                <span className="font-medium text-primary">AI suggestion · </span>
+                {aiReason}
+              </div>
+            )}
             <Tabs
               selectedKey={tab}
               onSelectionChange={(k) => setTab(k as "simple" | "journal")}
