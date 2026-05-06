@@ -38,7 +38,7 @@ export async function POST(req: Request) {
     baseURL: "https://openrouter.ai/api/v1",
     defaultHeaders: {
       "HTTP-Referer": "https://accounting-app-vwork.vercel.app",
-      "X-Title": "Accounting app — receipt analyzer",
+      "X-Title": "Accounting app - receipt analyzer",
     },
   })
 
