@@ -11,7 +11,17 @@ import {
 } from "@/components/ui/table"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { FileTrigger } from "@/components/ui/file-trigger"
+import {
+  ModalBody,
+  ModalContent,
+  ModalHeader,
+  ModalTitle,
+} from "@/components/ui/modal"
+import { FilePond, registerPlugin } from "react-filepond"
+import FilePondPluginFileValidateType from "filepond-plugin-file-validate-type"
+import "filepond/dist/filepond.min.css"
+import "@/styles/filepond.css"
+registerPlugin(FilePondPluginFileValidateType)
 import {
   Select,
   SelectContent,
@@ -89,10 +99,9 @@ export default function ImportPage() {
   const [pending, setPending] = useState<Pending[]>([])
   const [submitting, setSubmitting] = useState(false)
 
-  const handleFile = async (files: FileList | null) => {
-    if (!files || !files[0]) return
-    const text = await files[0].text()
-    const rows = parseCsv(text)
+  const [pickerOpen, setPickerOpen] = useState(false)
+
+  const ingestRows = (rows: Array<Record<string, string>>) => {
     const next: Pending[] = rows.map((r, i) => {
       const amount = Number(r.amount ?? r.value ?? 0)
       return {
@@ -106,6 +115,36 @@ export default function ImportPage() {
       }
     })
     setPending(next)
+  }
+
+  const handleFile = async (file: File) => {
+    const lower = file.name.toLowerCase()
+    if (lower.endsWith(".csv")) {
+      ingestRows(parseCsv(await file.text()))
+    } else if (lower.endsWith(".xlsx") || lower.endsWith(".xls")) {
+      // Lazy-load xlsx (~500KB) only when the user actually picks an Excel file.
+      const XLSX = await import("xlsx")
+      const buf = await file.arrayBuffer()
+      const wb = XLSX.read(buf, { type: "array" })
+      const sheet = wb.Sheets[wb.SheetNames[0]]
+      const arr = XLSX.utils.sheet_to_json<Record<string, any>>(sheet, {
+        defval: "",
+      })
+      ingestRows(
+        arr.map((row) => {
+          const out: Record<string, string> = {}
+          for (const k of Object.keys(row)) {
+            out[k.toLowerCase().trim()] = String(row[k] ?? "")
+          }
+          return out
+        }),
+      )
+    } else {
+      toast.error("Only .csv, .xlsx, .xls files are supported")
+      return
+    }
+    setPickerOpen(false)
+    toast.success(`Loaded ${file.name}`)
   }
 
   const update = (id: string, patch: Partial<Pending>) =>
@@ -164,11 +203,9 @@ export default function ImportPage() {
       <CardHeader className="flex w-full flex-col items-stretch gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
         <CardTitle>Import transactions</CardTitle>
         <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
-          <FileTrigger acceptedFileTypes={[".csv"]} onSelect={handleFile}>
-            <Button intent="outline">
-              <IconPlus /> Choose CSV
-            </Button>
-          </FileTrigger>
+          <Button intent="outline" onPress={() => setPickerOpen(true)}>
+            <IconPlus /> Choose file
+          </Button>
           <Button intent="plain" onPress={clearAll} isDisabled={pending.length === 0}>
             Clear
           </Button>
@@ -181,7 +218,10 @@ export default function ImportPage() {
           </Button>
         </div>
       </CardHeader>
-      <CardContent className="flex-1 overflow-auto p-0">
+      <CardContent
+        className="flex-1 overflow-auto px-4 py-0 [&_table]:min-w-[760px]"
+        style={{ "--gutter": "1rem" } as React.CSSProperties}
+      >
         <Table aria-label="Staged transactions">
           <IntentTableHeader>
             <TableColumn id="date" isRowHeader>Date</TableColumn>
@@ -271,6 +311,48 @@ export default function ImportPage() {
           </TableBody>
         </Table>
       </CardContent>
+
+      <ModalContent
+        size="2xl"
+        isOpen={pickerOpen}
+        onOpenChange={setPickerOpen}
+      >
+        <ModalHeader>
+          <ModalTitle>Choose CSV or Excel</ModalTitle>
+        </ModalHeader>
+        <ModalBody>
+          <FilePond
+            allowMultiple={false}
+            credits={false}
+            instantUpload={false}
+            allowProcess={false}
+            acceptedFileTypes={[
+              "text/csv",
+              "application/vnd.ms-excel",
+              "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            ]}
+            fileValidateTypeLabelExpectedTypes="Expects .csv, .xlsx or .xls"
+            fileValidateTypeDetectType={(source, type) =>
+              new Promise((resolve) => {
+                const n = source.name.toLowerCase()
+                if (n.endsWith(".csv")) resolve("text/csv")
+                else if (n.endsWith(".xlsx"))
+                  resolve(
+                    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                  )
+                else if (n.endsWith(".xls"))
+                  resolve("application/vnd.ms-excel")
+                else resolve(type)
+              })
+            }
+            labelIdle='Drop a CSV or Excel file, or <span class="filepond--label-action">browse</span>'
+            onaddfile={(err, item) => {
+              if (err || !item?.file) return
+              handleFile(item.file as File)
+            }}
+          />
+        </ModalBody>
+      </ModalContent>
     </Card>
   )
 }
