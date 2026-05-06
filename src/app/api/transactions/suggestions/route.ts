@@ -10,9 +10,13 @@ export const dynamic = "force-dynamic"
 // "Already created this month" cue. Hiding them was confusing: users wanted
 // to keep seeing the recurring pattern even after acting on it.
 export async function GET() {
+  // 10 business days ≈ 14 calendar days. We anchor at "one month ago" and
+  // include any transactions on or before the anchor, but no further back
+  // than 14 days from it — covers a fortnight of activity.
   const rows = await db.execute(sql`
     with target_week as (
-      select date_trunc('week', current_date - interval '1 month')::date as start_d,
+      select (current_date - interval '1 month')::date as anchor,
+             ((current_date - interval '1 month') - interval '14 days')::date as start_d,
              date_trunc('week', current_date)::date as current_week
     )
     select
@@ -42,7 +46,9 @@ export async function GET() {
     left join journal_lines jl on jl.transaction_id = t.id
     left join accounts a on a.id = jl.account_id
     where t.date >= tw.start_d
-      and t.date < tw.start_d + interval '7 days'
+      and t.date <= tw.anchor
+      -- 10 business days = skip Saturdays (extract dow=6) and Sundays (dow=0)
+      and extract(dow from t.date) not in (0, 6)
       and not exists (
         select 1 from dismissed_suggestions ds
         where ds.source_transaction_id = t.id
