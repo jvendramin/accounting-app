@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server"
 import OpenAI from "openai"
 import { z } from "zod"
+import { eq } from "drizzle-orm"
+import { db, receipts } from "@/lib/db"
 
 export const runtime = "nodejs"
 export const dynamic = "force-dynamic"
@@ -8,6 +10,7 @@ export const dynamic = "force-dynamic"
 const Input = z.object({
   image_url: z.string().url(),
   filename: z.string().optional(),
+  receipt_id: z.coerce.number().optional(),
 })
 
 const SYSTEM = `You extract structured data from receipt images for a bookkeeping app.
@@ -72,12 +75,31 @@ export async function POST(req: Request) {
     parsed = m ? JSON.parse(m[0]) : {}
   }
 
-  return NextResponse.json({
+  const result = {
     description: parsed.description ?? "",
     reference: parsed.reference ?? null,
     amount: Number(parsed.amount) || 0,
     date: parsed.date ?? new Date().toISOString().slice(0, 10),
     currency: parsed.currency ?? null,
     category_hint: parsed.category_hint ?? null,
-  })
+  }
+
+  // Persist the analysis on the receipt row so we can show "analyzed" badges
+  // and the existing audit-log trigger captures the event automatically.
+  if (body.receipt_id) {
+    try {
+      await db
+        .update(receipts)
+        .set({
+          analyzedAt: new Date(),
+          analysis: JSON.stringify(result),
+          updatedAt: new Date(),
+        })
+        .where(eq(receipts.id, body.receipt_id))
+    } catch {
+      /* non-fatal — analysis result still returned to client */
+    }
+  }
+
+  return NextResponse.json(result)
 }

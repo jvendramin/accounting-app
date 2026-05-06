@@ -71,6 +71,8 @@ export const receipts = pgTable("receipts", {
   folder: varchar("folder"),
   bucket: varchar("bucket"),
   etag: varchar("etag"),
+  analyzedAt: timestamp("analyzed_at", { withTimezone: true }),
+  analysis: text("analysis"),
   createdAt: timestamp("created_at", { precision: 6, mode: "date" })
     .defaultNow()
     .notNull(),

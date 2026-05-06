@@ -1,12 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import {
-  SheetBody,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-} from "@/components/ui/sheet"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { api } from "@/lib/api"
 
@@ -45,6 +40,12 @@ function summarize(row: AuditRow): string {
     const credit = Number(data.credit ?? 0)
     return `Debit $${debit.toFixed(2)} / Credit $${credit.toFixed(2)}`
   }
+  if (row.table_name === "receipts") {
+    const oldA = row.old_data?.analyzed_at
+    const newA = row.new_data?.analyzed_at
+    if (newA && newA !== oldA) return `Analyzed: ${data.filename ?? `#${row.row_id}`}`
+    return data.filename ?? `#${row.row_id}`
+  }
   return `#${row.row_id ?? "?"}`
 }
 
@@ -63,37 +64,24 @@ const niceTime = (iso: string) => {
   })
 }
 
-export function ActivityLogSheet({
-  isOpen,
-  onOpenChange,
-}: {
-  isOpen: boolean
-  onOpenChange: (v: boolean) => void
-}) {
+export default function ActivityPage() {
   const [rows, setRows] = useState<AuditRow[]>([])
-  const [loading, setLoading] = useState(false)
-
+  const [loading, setLoading] = useState(true)
   useEffect(() => {
-    if (!isOpen) return
     setLoading(true)
     api
-      .get<AuditRow[]>("/api/audit", { limit: 200 })
+      .get<AuditRow[]>("/api/audit", { limit: 500 })
       .then(setRows)
       .catch(() => {})
       .finally(() => setLoading(false))
-  }, [isOpen])
+  }, [])
 
   return (
-    <SheetContent
-      isOpen={isOpen}
-      onOpenChange={onOpenChange}
-      side="right"
-      className="sm:max-w-md"
-    >
-      <SheetHeader>
-        <SheetTitle>Activity log</SheetTitle>
-      </SheetHeader>
-      <SheetBody>
+    <Card className="flex flex-1 min-h-0 flex-col">
+      <CardHeader>
+        <CardTitle>Activity log</CardTitle>
+      </CardHeader>
+      <CardContent className="flex-1 overflow-auto px-4 py-4">
         {loading && rows.length === 0 ? (
           <div className="p-8 text-center text-sm text-muted-fg">Loading…</div>
         ) : rows.length === 0 ? (
@@ -121,7 +109,7 @@ export function ActivityLogSheet({
             ))}
           </ol>
         )}
-      </SheetBody>
-    </SheetContent>
+      </CardContent>
+    </Card>
   )
 }

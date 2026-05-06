@@ -28,6 +28,7 @@ export async function GET(req: Request) {
       folder: r.folder,
       bucket: r.bucket,
       etag: r.etag,
+      analyzed_at: r.analyzedAt,
       created_at: r.createdAt,
     })),
   )

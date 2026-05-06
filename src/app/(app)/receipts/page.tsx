@@ -11,6 +11,7 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { FileUploader } from "@/components/file-uploader"
 import {
@@ -71,9 +72,11 @@ export default function ReceiptsPage() {
     storage_key: string
     public_url: string
   }) => {
-    // 1. Persist the receipt row.
+    // 1. Persist the receipt row — MANDATORY. If this fails we don't proceed,
+    // because every B2 upload must be tracked in Neon (no orphans).
+    let receiptId: number | null = null
     try {
-      await api.post("/api/receipts", {
+      const created = await api.post<{ id: number }>("/api/receipts", {
         receipt: {
           filename: file.filename,
           content_type: file.content_type,
@@ -83,10 +86,11 @@ export default function ReceiptsPage() {
           uploader_sub: userSub ?? "anonymous",
         },
       })
+      receiptId = created.id
       invalidateCache(key)
       refetch()
     } catch (e: any) {
-      toast.error(e?.message ?? "Save failed")
+      toast.error(`Upload tracked in B2 but DB log failed: ${e?.message ?? ""}`)
       return
     }
 
@@ -102,6 +106,7 @@ export default function ReceiptsPage() {
       }>("/api/receipts/analyze", {
         image_url: file.public_url,
         filename: file.filename,
+        receipt_id: receiptId,
       })
       sessionStorage.setItem(
         "receipt-prefill",
@@ -110,6 +115,37 @@ export default function ReceiptsPage() {
           storage_key: file.storage_key,
         }),
       )
+      router.push("/transactions?from-receipt=1")
+    } catch (e: any) {
+      toast.error(e?.message ?? "Analysis failed")
+    } finally {
+      setAnalyzing(false)
+    }
+  }
+
+  const analyzeExisting = async (r: Receipt) => {
+    if (!r.url) {
+      toast.error("Receipt has no URL — re-upload it")
+      return
+    }
+    setAnalyzing(true)
+    try {
+      const parsed = await api.post<{
+        description: string
+        reference: string | null
+        amount: number
+        date: string
+      }>("/api/receipts/analyze", {
+        image_url: r.url,
+        filename: r.filename,
+        receipt_id: r.id,
+      })
+      sessionStorage.setItem(
+        "receipt-prefill",
+        JSON.stringify({ ...parsed, storage_key: r.storage_key }),
+      )
+      invalidateCache(key)
+      refetch()
       router.push("/transactions?from-receipt=1")
     } catch (e: any) {
       toast.error(e?.message ?? "Analysis failed")
@@ -173,7 +209,16 @@ export default function ReceiptsPage() {
           >
             {(r) => (
               <TableRow id={r.id}>
-                <TableCell className="font-medium">{r.filename}</TableCell>
+                <TableCell className="font-medium">
+                  <div className="flex items-center gap-2">
+                    <span className="truncate">{r.filename}</span>
+                    {r.analyzed_at && (
+                      <Badge intent="success" className="shrink-0">
+                        Analyzed
+                      </Badge>
+                    )}
+                  </div>
+                </TableCell>
                 <TableCell className="tabular-nums">
                   {r.byte_size ? `${Math.round(r.byte_size / 1024)} KB` : "—"}
                 </TableCell>
@@ -188,6 +233,10 @@ export default function ReceiptsPage() {
                         <EllipsisVerticalIcon />
                       </MenuTrigger>
                       <MenuContent aria-label="Actions" placement="left top">
+                        <MenuItem onAction={() => analyzeExisting(r)}>
+                          {r.analyzed_at ? "Re-analyze" : "Analyze"}
+                        </MenuItem>
+                        <MenuSeparator />
                         <MenuItem intent="danger" onAction={() => remove(r.id)}>
                           Delete
                         </MenuItem>

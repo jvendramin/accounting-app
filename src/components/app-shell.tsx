@@ -35,7 +35,6 @@ import {
 } from "@heroicons/react/24/outline"
 import { auth } from "@/lib/auth"
 import { useTheme } from "@/components/theme-provider"
-import { ActivityLogSheet } from "@/components/activity-log"
 import {
   IconCircleQuestionmark,
   IconChartBar,
@@ -59,6 +58,7 @@ const titles: Record<string, string> = {
   "/categories": "Categories",
   "/receipts": "Receipts",
   "/import": "Import",
+  "/activity": "Activity",
   "/reports/pnl": "Profit & Loss",
   "/reports/balance-sheet": "Balance Sheet",
   "/reports/cashflow": "Cashflow",
@@ -71,7 +71,6 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const user = session.data?.user
   const { theme, setTheme } = useTheme()
   const [txCount, setTxCount] = useState<number | null>(null)
-  const [activityOpen, setActivityOpen] = useState(false)
   useEffect(() => {
     fetch("/api/transactions/count_recent")
       .then((r) => (r.ok ? r.json() : null))
@@ -137,7 +136,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 <IconUpload />
                 <SidebarLabel>Import</SidebarLabel>
               </SidebarItem>
-              <SidebarItem onPress={() => setActivityOpen(true)}>
+              <SidebarItem
+                href="/activity"
+                isCurrent={pathname === "/activity"}
+              >
                 <IconActivity />
                 <SidebarLabel>Activity</SidebarLabel>
               </SidebarItem>
@@ -247,10 +249,6 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           {children}
         </main>
       </SidebarInset>
-      <ActivityLogSheet
-        isOpen={activityOpen}
-        onOpenChange={setActivityOpen}
-      />
     </SidebarProvider>
   )
 }

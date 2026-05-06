@@ -33,12 +33,14 @@ export type Txn = {
 
 export type Receipt = {
   id: number
-  filename?: string
+  filename: string
   content_type?: string
   byte_size?: number
   storage_key?: string
+  url?: string | null
   transaction_id?: number | null
   uploader_sub?: string | null
+  analyzed_at?: string | null
   created_at?: string
 }
 
