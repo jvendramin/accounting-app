@@ -397,6 +397,7 @@ export default function TransactionsPage() {
       invalidateCache(
         "dashboard:reports/profit_and_loss",
         "dashboard:reports/cashflow",
+        "dashboard:suggestions",
       )
       refetchTxns()
       toast.success(wasUpdate ? "Transaction updated" : "Transaction created")
@@ -413,6 +414,7 @@ export default function TransactionsPage() {
       invalidateCache(
         "dashboard:reports/profit_and_loss",
         "dashboard:reports/cashflow",
+        "dashboard:suggestions",
       )
       refetchTxns()
     } catch {}
