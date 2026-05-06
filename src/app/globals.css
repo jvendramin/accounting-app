@@ -331,3 +331,12 @@ button:not(:disabled),
 tr[data-row]:has(:not(td:has(input))) {
   cursor: pointer;
 }
+
+/* TextShimmer animation — gradient slides across the text. */
+@keyframes shimmer {
+  0%   { background-position: 200% 50%; }
+  100% { background-position: -200% 50%; }
+}
+.shimmer-anim {
+  animation: shimmer var(--shimmer-duration, 4s) linear infinite;
+}

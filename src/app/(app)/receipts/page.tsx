@@ -19,6 +19,8 @@ import {
   ModalTitle,
   ModalBody,
 } from "@/components/ui/modal"
+import { TextShimmer } from "@/components/text-shimmer"
+import { useRouter } from "next/navigation"
 import {
   Menu,
   MenuContent,
@@ -59,13 +61,17 @@ export default function ReceiptsPage() {
   }, [rawRows, sortDescriptor])
 
   const [uploadOpen, setUploadOpen] = useState(false)
+  const [analyzing, setAnalyzing] = useState(false)
+  const router = useRouter()
 
   const onUploaded = async (file: {
     filename: string
     content_type: string
     byte_size: number
     storage_key: string
+    public_url: string
   }) => {
+    // 1. Persist the receipt row.
     try {
       await api.post("/api/receipts", {
         receipt: {
@@ -73,14 +79,42 @@ export default function ReceiptsPage() {
           content_type: file.content_type,
           byte_size: file.byte_size,
           storage_key: file.storage_key,
+          url: file.public_url,
           uploader_sub: userSub ?? "anonymous",
         },
       })
-      toast.success("Uploaded")
       invalidateCache(key)
       refetch()
     } catch (e: any) {
       toast.error(e?.message ?? "Save failed")
+      return
+    }
+
+    // 2. Analyze and pre-fill the transaction modal.
+    setUploadOpen(false)
+    setAnalyzing(true)
+    try {
+      const parsed = await api.post<{
+        description: string
+        reference: string | null
+        amount: number
+        date: string
+      }>("/api/receipts/analyze", {
+        image_url: file.public_url,
+        filename: file.filename,
+      })
+      sessionStorage.setItem(
+        "receipt-prefill",
+        JSON.stringify({
+          ...parsed,
+          storage_key: file.storage_key,
+        }),
+      )
+      router.push("/transactions?from-receipt=1")
+    } catch (e: any) {
+      toast.error(e?.message ?? "Analysis failed")
+    } finally {
+      setAnalyzing(false)
     }
   }
 
@@ -182,6 +216,24 @@ export default function ReceiptsPage() {
             maxFileSize="20MB"
             onUploaded={onUploaded}
           />
+        </ModalBody>
+      </ModalContent>
+
+      <ModalContent
+        size="md"
+        isOpen={analyzing}
+        onOpenChange={() => {
+          /* user can't dismiss while analyzing */
+        }}
+        closeButton={false}
+      >
+        <ModalBody className="grid place-items-center py-10">
+          <TextShimmer as="p" className="text-base" duration={2}>
+            Analyzing receipt with AI…
+          </TextShimmer>
+          <p className="mt-2 text-xs text-muted-fg">
+            Extracting merchant, amount, and date.
+          </p>
         </ModalBody>
       </ModalContent>
     </Card>

@@ -171,6 +171,30 @@ export default function TransactionsPage() {
       resetForms()
       setOpen(true)
       router.replace(pathname)
+    } else if (searchParams.get("from-receipt") === "1") {
+      const raw = sessionStorage.getItem("receipt-prefill")
+      sessionStorage.removeItem("receipt-prefill")
+      if (raw) {
+        try {
+          const r = JSON.parse(raw) as {
+            description?: string
+            reference?: string | null
+            amount?: number
+            date?: string
+          }
+          setEditingId(null)
+          setTab("simple")
+          setSimple({
+            date: r.date || today(),
+            description: r.description ?? "",
+            reference: r.reference ?? "",
+            kind: "withdrawal",
+            amount: Number(r.amount) || 0,
+          })
+          setOpen(true)
+        } catch {}
+      }
+      router.replace(pathname)
     } else if (searchParams.get("clone") === "1") {
       const raw = sessionStorage.getItem("clone-tx")
       sessionStorage.removeItem("clone-tx")
