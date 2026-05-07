@@ -194,6 +194,10 @@ export default function TransactionsPage() {
       .get<typeof drafts>("/api/drafts")
       .then(setDrafts)
       .catch(() => {})
+  // Load on page mount so the header button shows the count.
+  useEffect(() => {
+    reloadDrafts()
+  }, [])
 
   // Pending-overwrite prompt: queued action runs after the user accepts.
   const [overwritePrompt, setOverwritePrompt] = useState<null | {
@@ -577,6 +581,18 @@ export default function TransactionsPage() {
               >
                 {showFilters ? "Hide" : "Filters"}
               </Button>
+              {drafts.length > 0 && (
+                <Button
+                  intent="outline"
+                  size="sm"
+                  onPress={() => {
+                    reloadDrafts()
+                    setDraftsOpen(true)
+                  }}
+                >
+                  Drafts ({drafts.length})
+                </Button>
+              )}
               <Button size="sm" onPress={newTxn}>
                 <IconPlus />
               </Button>
@@ -642,6 +658,16 @@ export default function TransactionsPage() {
                 </Button>
               )}
             </div>
+            <Button
+              intent="outline"
+              onPress={() => {
+                reloadDrafts()
+                setDraftsOpen(true)
+              }}
+              className="hidden sm:inline-flex"
+            >
+              Drafts {drafts.length > 0 ? `(${drafts.length})` : ""}
+            </Button>
             <Button onPress={newTxn} className="hidden sm:inline-flex">
               <IconPlus /> New
             </Button>
