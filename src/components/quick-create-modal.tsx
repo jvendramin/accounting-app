@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useMemo, useState } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
 import { Button } from "@/components/ui/button"
 import { TextField } from "@/components/ui/text-field"
 import { Input } from "@/components/ui/input"
@@ -27,6 +27,8 @@ export type QuickType = "transaction" | "account" | "category" | null
 
 const today = () => new Date().toISOString().slice(0, 10)
 
+type DraftSaver = () => Promise<boolean>
+
 export function QuickCreateModal({
   type,
   onClose,
@@ -35,22 +37,133 @@ export function QuickCreateModal({
   onClose: () => void
 }) {
   const isOpen = type !== null
+  const [dirty, setDirty] = useState(false)
+  const [closePrompt, setClosePrompt] = useState(false)
+  const [savingDraft, setSavingDraft] = useState(false)
+  const draftSaverRef = useRef<DraftSaver | null>(null)
+
+  // Reset dirty/prompt whenever the modal closes or switches form type.
+  useEffect(() => {
+    if (!isOpen) {
+      setDirty(false)
+      setClosePrompt(false)
+      draftSaverRef.current = null
+    }
+  }, [isOpen, type])
+
+  const attemptClose = () => {
+    if (dirty) setClosePrompt(true)
+    else onClose()
+  }
+  const discardAndClose = () => {
+    setClosePrompt(false)
+    onClose()
+  }
+  const saveDraftAndClose = async () => {
+    if (!draftSaverRef.current) return
+    setSavingDraft(true)
+    try {
+      const ok = await draftSaverRef.current()
+      if (ok) {
+        setClosePrompt(false)
+        onClose()
+      }
+    } finally {
+      setSavingDraft(false)
+    }
+  }
+
   return (
-    <ModalContent
-      size="2xl"
-      isOpen={isOpen}
-      onOpenChange={(v) => {
-        if (!v) onClose()
-      }}
-    >
-      {type === "transaction" && <TxnForm onSaved={onClose} />}
-      {type === "account" && <AccountForm onSaved={onClose} />}
-      {type === "category" && <CategoryForm onSaved={onClose} />}
-    </ModalContent>
+    <>
+      <ModalContent
+        size="2xl"
+        isOpen={isOpen}
+        onOpenChange={(v) => {
+          if (!v) attemptClose()
+        }}
+      >
+        {type === "transaction" && (
+          <TxnForm
+            onSaved={onClose}
+            onCancel={attemptClose}
+            onDirtyChange={setDirty}
+            registerDraftSaver={(fn) => {
+              draftSaverRef.current = fn
+            }}
+          />
+        )}
+        {type === "account" && (
+          <AccountForm
+            onSaved={onClose}
+            onCancel={attemptClose}
+            onDirtyChange={setDirty}
+          />
+        )}
+        {type === "category" && (
+          <CategoryForm
+            onSaved={onClose}
+            onCancel={attemptClose}
+            onDirtyChange={setDirty}
+          />
+        )}
+      </ModalContent>
+
+      <ModalContent
+        size="md"
+        role="alertdialog"
+        isOpen={closePrompt}
+        onOpenChange={(v) => {
+          if (!v) setClosePrompt(false)
+        }}
+      >
+        <ModalHeader>
+          <ModalTitle>
+            {type === "transaction"
+              ? "Save as draft?"
+              : "Discard your changes?"}
+          </ModalTitle>
+        </ModalHeader>
+        <ModalBody>
+          <p className="text-sm">
+            {type === "transaction"
+              ? "You have unsaved progress. Save it as a draft to resume later, or discard your changes."
+              : "You have unsaved progress. Closing now will discard it."}
+          </p>
+        </ModalBody>
+        <ModalFooter>
+          <Button
+            intent="outline"
+            onPress={() => setClosePrompt(false)}
+            className="hidden sm:inline-flex"
+          >
+            Keep editing
+          </Button>
+          <Button intent="danger" onPress={discardAndClose}>
+            Discard
+          </Button>
+          {type === "transaction" && (
+            <Button onPress={saveDraftAndClose} isPending={savingDraft}>
+              Save as draft
+            </Button>
+          )}
+        </ModalFooter>
+      </ModalContent>
+    </>
   )
 }
 
-function TxnForm({ onSaved }: { onSaved: () => void }) {
+interface CommonFormProps {
+  onSaved: () => void
+  onCancel: () => void
+  onDirtyChange: (dirty: boolean) => void
+}
+
+function TxnForm({
+  onSaved,
+  onCancel,
+  onDirtyChange,
+  registerDraftSaver,
+}: CommonFormProps & { registerDraftSaver: (fn: DraftSaver) => void }) {
   const [accounts, setAccounts] = useState<Account[]>([])
   useEffect(() => {
     api.get<Account[]>("/api/accounts").then(setAccounts).catch(() => {})
@@ -77,6 +190,62 @@ function TxnForm({ onSaved }: { onSaved: () => void }) {
   const [categoryId, setCategoryId] = useState<number | undefined>()
   const [amount, setAmount] = useState(0)
   const [busy, setBusy] = useState(false)
+
+  const dirty =
+    !!description ||
+    !!reference ||
+    amount > 0 ||
+    accountId !== undefined ||
+    categoryId !== undefined
+  useEffect(() => {
+    onDirtyChange(dirty)
+  }, [dirty, onDirtyChange])
+
+  // Save current form state as a draft row. Returns true on success so the
+  // parent close-flow knows whether to dismiss.
+  useEffect(() => {
+    registerDraftSaver(async () => {
+      try {
+        const payload = {
+          tab: "simple",
+          editingId: null,
+          simple: {
+            date,
+            description,
+            reference,
+            kind,
+            account_id: accountId,
+            category_id: categoryId,
+            amount,
+          },
+          journal: {
+            date,
+            description: "",
+            reference: "",
+            lines: [
+              { account_id: undefined, debit: 0, credit: 0, memo: "" },
+              { account_id: undefined, debit: 0, credit: 0, memo: "" },
+            ],
+          },
+        }
+        const name = description || `Draft ${new Date().toLocaleString()}`
+        await api.post("/api/drafts", { draft: { name, payload } })
+        toast.success("Saved as draft")
+        return true
+      } catch {
+        return false
+      }
+    })
+  }, [
+    registerDraftSaver,
+    date,
+    description,
+    reference,
+    kind,
+    accountId,
+    categoryId,
+    amount,
+  ])
 
   const save = async () => {
     if (!accountId || !categoryId || amount <= 0 || !description) {
@@ -112,6 +281,7 @@ function TxnForm({ onSaved }: { onSaved: () => void }) {
         "dashboard:suggestions",
       )
       toast.success("Transaction created")
+      onDirtyChange(false)
       onSaved()
     } catch {
       /* api helper toasts */
@@ -203,7 +373,11 @@ function TxnForm({ onSaved }: { onSaved: () => void }) {
         </TextField>
       </ModalBody>
       <ModalFooter className="pt-4 sm:pt-3">
-        <Button intent="outline" onPress={onSaved} className="hidden sm:inline-flex">
+        <Button
+          intent="outline"
+          onPress={onCancel}
+          className="hidden sm:inline-flex"
+        >
           Cancel
         </Button>
         <Button onPress={save} isPending={busy}>
@@ -214,12 +388,16 @@ function TxnForm({ onSaved }: { onSaved: () => void }) {
   )
 }
 
-function AccountForm({ onSaved }: { onSaved: () => void }) {
+function AccountForm({ onSaved, onCancel, onDirtyChange }: CommonFormProps) {
   const TYPES = ["asset", "liability", "equity", "income", "expense"] as const
   const [name, setName] = useState("")
   const [code, setCode] = useState("")
   const [accountType, setAccountType] = useState<(typeof TYPES)[number]>("asset")
   const [busy, setBusy] = useState(false)
+  const dirty = !!name || !!code || accountType !== "asset"
+  useEffect(() => {
+    onDirtyChange(dirty)
+  }, [dirty, onDirtyChange])
   const save = async () => {
     if (!name) {
       toast.error("Name is required")
@@ -232,6 +410,7 @@ function AccountForm({ onSaved }: { onSaved: () => void }) {
       })
       invalidateCache("accounts:all")
       toast.success("Account created")
+      onDirtyChange(false)
       onSaved()
     } catch {
     } finally {
@@ -271,7 +450,11 @@ function AccountForm({ onSaved }: { onSaved: () => void }) {
         </div>
       </ModalBody>
       <ModalFooter className="pt-4 sm:pt-3">
-        <Button intent="outline" onPress={onSaved} className="hidden sm:inline-flex">
+        <Button
+          intent="outline"
+          onPress={onCancel}
+          className="hidden sm:inline-flex"
+        >
           Cancel
         </Button>
         <Button onPress={save} isPending={busy}>
@@ -282,11 +465,15 @@ function AccountForm({ onSaved }: { onSaved: () => void }) {
   )
 }
 
-function CategoryForm({ onSaved }: { onSaved: () => void }) {
+function CategoryForm({ onSaved, onCancel, onDirtyChange }: CommonFormProps) {
   const [name, setName] = useState("")
   const [kind, setKind] = useState<"income" | "expense">("expense")
   const [description, setDescription] = useState("")
   const [busy, setBusy] = useState(false)
+  const dirty = !!name || !!description || kind !== "expense"
+  useEffect(() => {
+    onDirtyChange(dirty)
+  }, [dirty, onDirtyChange])
   const save = async () => {
     if (!name) {
       toast.error("Name is required")
@@ -298,6 +485,7 @@ function CategoryForm({ onSaved }: { onSaved: () => void }) {
         category: { name, kind, description },
       })
       toast.success("Category created")
+      onDirtyChange(false)
       onSaved()
     } catch {
     } finally {
@@ -334,7 +522,11 @@ function CategoryForm({ onSaved }: { onSaved: () => void }) {
         </TextField>
       </ModalBody>
       <ModalFooter className="pt-4 sm:pt-3">
-        <Button intent="outline" onPress={onSaved} className="hidden sm:inline-flex">
+        <Button
+          intent="outline"
+          onPress={onCancel}
+          className="hidden sm:inline-flex"
+        >
           Cancel
         </Button>
         <Button onPress={save} isPending={busy}>
