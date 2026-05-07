@@ -113,6 +113,7 @@ export function QuickCreateModal({
       <ModalContent
         size="md"
         role="alertdialog"
+        isDismissable
         isOpen={closePrompt}
         onOpenChange={(v) => {
           if (!v) setClosePrompt(false)
@@ -133,13 +134,6 @@ export function QuickCreateModal({
           </p>
         </ModalBody>
         <ModalFooter>
-          <Button
-            intent="outline"
-            onPress={() => setClosePrompt(false)}
-            className="hidden sm:inline-flex"
-          >
-            Keep editing
-          </Button>
           <Button intent="danger" onPress={discardAndClose}>
             Discard
           </Button>
