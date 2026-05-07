@@ -12,8 +12,8 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
 
   if (!session.data) {
     return (
-      <div className="grid min-h-svh place-items-center p-6">
-        <div className="w-full max-w-sm">
+      <div className="grid min-h-svh place-items-center bg-muted/30 p-6">
+        <div className="w-full max-w-sm rounded-2xl border border-border bg-bg p-6 shadow-sm sm:p-8">
           <LoginForm />
         </div>
       </div>
