@@ -801,8 +801,6 @@ export default function TransactionsPage() {
       <ModalContent
         size="3xl"
         isOpen={open}
-        isDismissable={false}
-        isKeyboardDismissDisabled
         onOpenChange={(v) => {
           if (v) {
             setOpen(true)
@@ -1212,13 +1210,6 @@ export default function TransactionsPage() {
               className="me-auto hidden sm:inline-flex"
             >
               Drafts…
-            </Button>
-            <Button
-              intent="outline"
-              onPress={saveAsDraft}
-              isPending={savingDraft}
-            >
-              Save draft
             </Button>
             <Button
               intent="outline"
