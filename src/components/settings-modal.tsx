@@ -6,6 +6,7 @@ import { TextField } from "@/components/ui/text-field"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/field"
 import { Switch } from "@/components/ui/switch"
+import { NumberField, NumberInput } from "@/components/ui/number-field"
 import { Tab, TabList, TabPanel, TabPanels, Tabs } from "@/components/ui/tabs"
 import {
   Select,
@@ -457,13 +458,21 @@ export function SettingsModal({
                     </SelectContent>
                   </Select>
                 </div>
-                <TextField
-                  value={prefs.app.items_per_page ?? "50"}
-                  onChange={(v) => set.app("items_per_page", v)}
+                <NumberField
+                  value={Number(prefs.app.items_per_page ?? 50)}
+                  onChange={(v) =>
+                    set.app(
+                      "items_per_page",
+                      String(Number.isFinite(v) ? v : 50),
+                    )
+                  }
+                  minValue={10}
+                  maxValue={500}
+                  step={10}
                 >
                   <Label>Rows per page</Label>
-                  <Input type="number" min={10} max={500} step={10} />
-                </TextField>
+                  <NumberInput />
+                </NumberField>
                 <div className="grid gap-1.5">
                   <Label>Default new transaction type</Label>
                   <Select

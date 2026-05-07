@@ -35,6 +35,7 @@ import { Badge } from "@/components/ui/badge"
 import { IconPlus } from "@/components/icons"
 import { toast } from "sonner"
 import { BulkActionsBar, selectedIds } from "@/components/bulk-actions-bar"
+import { NumberField, NumberInput } from "@/components/ui/number-field"
 import type { Selection } from "react-aria-components"
 
 type Tax = {
@@ -286,17 +287,21 @@ export default function TaxesPage() {
             <Label>Name</Label>
             <Input placeholder="e.g. GST" />
           </TextField>
-          <TextField
-            value={
-              editing?.rate != null ? String((editing.rate * 100).toFixed(2)) : ""
-            }
+          <NumberField
+            value={editing?.rate != null ? editing.rate * 100 : 0}
             onChange={(v) =>
-              setEditing({ ...editing!, rate: Number(v) / 100 || 0 })
+              setEditing({
+                ...editing!,
+                rate: Number.isFinite(v) ? v / 100 : 0,
+              })
             }
+            minValue={0}
+            step={0.01}
+            formatOptions={{ style: "decimal", minimumFractionDigits: 2 }}
           >
             <Label>Rate (%)</Label>
-            <Input type="number" inputMode="decimal" step="0.01" />
-          </TextField>
+            <NumberInput />
+          </NumberField>
           <TextField
             value={editing?.description ?? ""}
             onChange={(v) => setEditing({ ...editing!, description: v })}

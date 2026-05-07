@@ -19,11 +19,13 @@ const NumberField = ({ className, ...props }: NumberFieldProps) => {
 
 interface InputProps extends PrimitiveInputProps {
   ref?: React.RefObject<HTMLInputElement>
+  leading?: React.ReactNode
 }
 
-function NumberInput({ className, ...props }: InputProps) {
+function NumberInput({ className, leading, ...props }: InputProps) {
   return (
     <InputGroup className="[--input-gutter-end:--spacing(20)]">
+      {leading}
       <Input className={cx("tabular-nums", className)} {...props} />
       <div
         data-slot="text"

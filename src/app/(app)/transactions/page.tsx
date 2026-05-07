@@ -59,6 +59,8 @@ import { toast } from "sonner"
 import { fmtMoney, titleCase } from "@/lib/format"
 import { api, type Account, type Txn } from "@/lib/api"
 import { BulkActionsBar, selectedIds } from "@/components/bulk-actions-bar"
+import { NumberField, NumberInput } from "@/components/ui/number-field"
+import { CurrencyDollarIcon } from "@heroicons/react/20/solid"
 import type { Selection } from "react-aria-components"
 import {
   invalidateCache,
@@ -957,15 +959,24 @@ export default function TransactionsPage() {
                   </div>
                 </div>
                 <div className="grid gap-4 sm:grid-cols-2">
-                  <TextField
-                    value={String(simple.amount || "")}
+                  <NumberField
+                    value={simple.amount}
                     onChange={(v) =>
-                      setSimple({ ...simple, amount: Number(v) || 0 })
+                      setSimple({
+                        ...simple,
+                        amount: Number.isFinite(v) ? v : 0,
+                      })
                     }
+                    minValue={0}
+                    step={0.01}
+                    formatOptions={{
+                      style: "decimal",
+                      minimumFractionDigits: 2,
+                    }}
                   >
                     <Label>Amount</Label>
-                    <Input type="number" inputMode="decimal" step="0.01" />
-                  </TextField>
+                    <NumberInput leading={<CurrencyDollarIcon />} />
+                  </NumberField>
                   <div className="grid gap-1.5">
                     <Label>Category</Label>
                     <Select
@@ -1157,36 +1168,48 @@ export default function TransactionsPage() {
                               </Select>
                             </td>
                             <td className="p-2">
-                              <TextField
-                                value={String(l.debit || "")}
+                              <NumberField
+                                value={Number(l.debit) || 0}
                                 onChange={(v) =>
-                                  updateLine(i, { debit: Number(v) || 0 })
+                                  updateLine(i, {
+                                    debit: Number.isFinite(v) ? v : 0,
+                                  })
                                 }
+                                minValue={0}
+                                step={0.01}
+                                formatOptions={{
+                                  style: "decimal",
+                                  minimumFractionDigits: 2,
+                                }}
                                 aria-label="Debit"
                               >
-                                <Input
-                                  type="number"
-                                  step="0.01"
-                                  inputMode="decimal"
+                                <NumberInput
+                                  leading={<CurrencyDollarIcon />}
                                   className="text-right"
                                 />
-                              </TextField>
+                              </NumberField>
                             </td>
                             <td className="p-2">
-                              <TextField
-                                value={String(l.credit || "")}
+                              <NumberField
+                                value={Number(l.credit) || 0}
                                 onChange={(v) =>
-                                  updateLine(i, { credit: Number(v) || 0 })
+                                  updateLine(i, {
+                                    credit: Number.isFinite(v) ? v : 0,
+                                  })
                                 }
+                                minValue={0}
+                                step={0.01}
+                                formatOptions={{
+                                  style: "decimal",
+                                  minimumFractionDigits: 2,
+                                }}
                                 aria-label="Credit"
                               >
-                                <Input
-                                  type="number"
-                                  step="0.01"
-                                  inputMode="decimal"
+                                <NumberInput
+                                  leading={<CurrencyDollarIcon />}
                                   className="text-right"
                                 />
-                              </TextField>
+                              </NumberField>
                             </td>
                             <td className="p-2">
                               <Button

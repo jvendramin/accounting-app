@@ -13,6 +13,8 @@ import {
 } from "@/components/ui/select"
 import { DatePicker, DatePickerTrigger } from "@/components/ui/date-picker"
 import { parseDate } from "@internationalized/date"
+import { NumberField, NumberInput } from "@/components/ui/number-field"
+import { CurrencyDollarIcon } from "@heroicons/react/20/solid"
 import {
   ModalBody,
   ModalContent,
@@ -339,13 +341,16 @@ function TxnForm({
           </div>
         </div>
         <div className="grid gap-4 sm:grid-cols-2">
-          <TextField
-            value={String(amount || "")}
-            onChange={(v) => setAmount(Number(v) || 0)}
+          <NumberField
+            value={amount}
+            onChange={(v) => setAmount(Number.isFinite(v) ? v : 0)}
+            minValue={0}
+            step={0.01}
+            formatOptions={{ style: "decimal", minimumFractionDigits: 2 }}
           >
             <Label>Amount</Label>
-            <Input type="number" inputMode="decimal" step="0.01" />
-          </TextField>
+            <NumberInput leading={<CurrencyDollarIcon />} />
+          </NumberField>
           <div className="grid gap-1.5">
             <Label>Category</Label>
             <Select
