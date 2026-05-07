@@ -19,6 +19,24 @@ export {
   CalculatorIcon as IconTax,
 } from "@heroicons/react/24/outline"
 
-// Solid plus reads as a heavier "+" stroke than the 1.5px outline variant —
-// preferred for primary CTAs (e.g. "+ New", "+ Add line", "+ Upload").
-export { PlusIcon as IconPlus } from "@heroicons/react/20/solid"
+// Heavier "+" glyph for primary CTAs — heroicons' outline and solid
+// variants both render thin against vivid fills, so use a hand-rolled
+// SVG with stroke-width 3.
+export function IconPlus(props: React.SVGProps<SVGSVGElement>) {
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={3}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+      data-slot="icon"
+      {...props}
+    >
+      <path d="M12 5v14M5 12h14" />
+    </svg>
+  )
+}
