@@ -1312,7 +1312,21 @@ export default function TransactionsPage() {
           </p>
         </ModalBody>
         <ModalFooter>
-          <Button intent="outline" onPress={() => setOverwritePrompt(null)}>
+          <Button
+            intent="outline"
+            onPress={() => {
+              setOverwritePrompt(null)
+              try {
+                const raw =
+                  typeof window !== "undefined"
+                    ? localStorage.getItem(DRAFT_KEY)
+                    : null
+                if (raw && loadSnapshot(JSON.parse(raw))) setOpen(true)
+              } catch {
+                /* ignore — corrupt snapshot just dismisses */
+              }
+            }}
+          >
             Keep editing
           </Button>
           <Button
