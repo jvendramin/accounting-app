@@ -58,6 +58,8 @@ import { IconPlus, IconTrash, IconX } from "@/components/icons"
 import { toast } from "sonner"
 import { fmtMoney, titleCase } from "@/lib/format"
 import { api, type Account, type Txn } from "@/lib/api"
+import { BulkActionsBar, selectedIds } from "@/components/bulk-actions-bar"
+import type { Selection } from "react-aria-components"
 import {
   invalidateCache,
   invalidateCachePrefix,
@@ -314,6 +316,27 @@ export default function TransactionsPage() {
   }, [searchParams])
   const [tab, setTab] = useState<"simple" | "journal">("simple")
   const [editingId, setEditingId] = useState<number | null>(null)
+  const [selection, setSelection] = useState<Selection>(new Set())
+  const bulkDelete = async () => {
+    const ids = selectedIds(selection, rows)
+    if (ids.length === 0) return
+    if (!confirm(`Delete ${ids.length} transaction${ids.length > 1 ? "s" : ""}?`))
+      return
+    try {
+      await api.post("/api/transactions/bulk_destroy", { ids })
+      setSelection(new Set())
+      invalidateCachePrefix("transactions:")
+      invalidateCache(
+        "dashboard:reports/profit_and_loss",
+        "dashboard:reports/cashflow",
+        "dashboard:suggestions",
+      )
+      refetchTxns()
+      toast.success(`Deleted ${ids.length}`)
+    } catch {
+      /* toasted */
+    }
+  }
   const [simple, setSimple] = useState<SimpleForm>({
     date: today(),
     description: "",
@@ -722,9 +745,20 @@ export default function TransactionsPage() {
           className="flex-1 overflow-auto px-4 py-0 [&_table]:min-w-[720px]"
           style={{ "--gutter": "1rem" } as React.CSSProperties}
         >
+          <BulkActionsBar
+            selection={selection}
+            totalRows={rows.length}
+            onClear={() => setSelection(new Set())}
+            onDelete={bulkDelete}
+          />
           <Table
             allowResize
             aria-label="Transactions"
+            selectionMode="multiple"
+            selectedKeys={selection}
+            onSelectionChange={(keys) =>
+              setSelection(keys)
+            }
             sortDescriptor={sortDescriptor}
             onSortChange={(d) => setSortDescriptor(d as SortDesc)}
           >

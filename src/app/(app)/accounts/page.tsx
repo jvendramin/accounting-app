@@ -41,6 +41,8 @@ import { Badge } from "@/components/ui/badge"
 import { IconPlus } from "@/components/icons"
 import { toast } from "sonner"
 import { fmtMoney, titleCase } from "@/lib/format"
+import { BulkActionsBar, selectedIds } from "@/components/bulk-actions-bar"
+import type { Selection } from "react-aria-components"
 
 type Account = {
   id: number
@@ -67,6 +69,25 @@ export default function AccountsPage() {
     column: "code",
     direction: "ascending",
   })
+  const [selection, setSelection] = useState<Selection>(new Set())
+  const bulkDelete = async () => {
+    const ids = selectedIds(selection, rows)
+    if (ids.length === 0) return
+    if (!confirm(`Delete ${ids.length} account${ids.length > 1 ? "s" : ""}?`))
+      return
+    const res = await fetch("/api/accounts/bulk_destroy", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ ids }),
+    })
+    if (res.ok) {
+      setSelection(new Set())
+      load()
+      toast.success(`Deleted ${ids.length}`)
+    } else {
+      toast.error("Failed to delete")
+    }
+  }
 
   const load = () => {
     setLoading(true)
@@ -219,9 +240,20 @@ export default function AccountsPage() {
           className="flex-1 overflow-auto px-4 py-0 [&_table]:min-w-[640px]"
           style={{ "--gutter": "1rem" } as React.CSSProperties}
         >
+          <BulkActionsBar
+            selection={selection}
+            totalRows={filtered.length}
+            onClear={() => setSelection(new Set())}
+            onDelete={bulkDelete}
+          />
           <Table
             allowResize
             aria-label="Accounts"
+            selectionMode="multiple"
+            selectedKeys={selection}
+            onSelectionChange={(keys) =>
+              setSelection(keys)
+            }
             sortDescriptor={sortDescriptor}
             onSortChange={(d) => setSortDescriptor(d as SortDesc)}
           >

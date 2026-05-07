@@ -31,6 +31,8 @@ import {
 } from "@/components/ui/menu"
 import { IconPlus } from "@/components/icons"
 import { toast } from "sonner"
+import { BulkActionsBar, selectedIds } from "@/components/bulk-actions-bar"
+import type { Selection } from "react-aria-components"
 import { auth } from "@/lib/auth"
 import { api, type Receipt } from "@/lib/api"
 import { invalidateCache, useCachedFetch } from "@/hooks/use-cached-fetch"
@@ -169,6 +171,23 @@ export default function ReceiptsPage() {
     refetch()
   }
 
+  const [selection, setSelection] = useState<Selection>(new Set())
+  const bulkDelete = async () => {
+    const ids = selectedIds(selection, rows)
+    if (ids.length === 0) return
+    if (!confirm(`Delete ${ids.length} receipt${ids.length > 1 ? "s" : ""}?`))
+      return
+    try {
+      await api.post("/api/receipts/bulk_destroy", { ids })
+      setSelection(new Set())
+      invalidateCache(key)
+      refetch()
+      toast.success(`Deleted ${ids.length}`)
+    } catch {
+      /* toasted */
+    }
+  }
+
   return (
     <Card className="flex flex-1 min-h-0 flex-col">
       <CardHeader className="flex w-full flex-col items-stretch gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
@@ -181,9 +200,20 @@ export default function ReceiptsPage() {
         className="flex-1 overflow-auto px-4 py-0 [&_table]:min-w-[640px]"
         style={{ "--gutter": "1rem" } as React.CSSProperties}
       >
+        <BulkActionsBar
+          selection={selection}
+          totalRows={rows.length}
+          onClear={() => setSelection(new Set())}
+          onDelete={bulkDelete}
+        />
         <Table
           allowResize
           aria-label="Receipts"
+          selectionMode="multiple"
+          selectedKeys={selection}
+          onSelectionChange={(keys) =>
+            setSelection(keys)
+          }
           sortDescriptor={sortDescriptor}
           onSortChange={(d) =>
             setSortDescriptor(d as { column: string; direction: "ascending" | "descending" })
