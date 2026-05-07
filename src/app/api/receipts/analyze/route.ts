@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server"
 import OpenAI from "openai"
+import { GoogleGenAI } from "@google/genai"
 import { z } from "zod"
 import { sql, eq } from "drizzle-orm"
 import { db, receipts } from "@/lib/db"
@@ -34,9 +35,7 @@ Return STRICT JSON matching exactly this shape (no prose, no markdown):
   "account_id":  number,            // pick the BEST cash account this came from (the bank/card account paying)
   "category_id": number,            // pick the BEST expense category for what was bought
   "reasoning_summary": string,      // ≤ 12-word headline of what you concluded
-  "reasoning_steps":   string[]     // 3-5 short steps showing how you got there.
-                                    // Format each step as "Title: detail" (e.g.
-                                    // "Read receipt: Stripe deposit, $4,750").
+  "reasoning_steps":   string[]     // 3-5 short steps formatted "Title: detail"
 }
 
 Available cash/asset accounts (pick one for "account_id"):
@@ -48,18 +47,105 @@ ${fmt(expenseAccounts)}
 Use only ids that appear above. If you can't read the receipt at all, return amount: 0 with the most generic account/category ids and explain in reasoning.`
 }
 
+// Fetch the image bytes once; both providers want them in different shapes
+// (Gemini = inline base64, OpenRouter = URL passthrough but we already have
+// the bytes so passing them inline as a data URL is more portable).
+async function fetchImage(url: string): Promise<{ data: Buffer; mimeType: string }> {
+  const res = await fetch(url)
+  if (!res.ok) throw new Error(`Image fetch failed: ${res.status}`)
+  const mimeType =
+    res.headers.get("content-type")?.split(";")[0] || "image/jpeg"
+  const buf = Buffer.from(await res.arrayBuffer())
+  return { data: buf, mimeType }
+}
+
+async function analyzeWithGemini(
+  apiKey: string,
+  model: string,
+  systemPrompt: string,
+  userText: string,
+  image: { data: Buffer; mimeType: string },
+): Promise<any> {
+  const ai = new GoogleGenAI({ apiKey })
+  const result = await ai.models.generateContent({
+    model,
+    contents: [
+      {
+        role: "user",
+        parts: [
+          { text: userText },
+          {
+            inlineData: {
+              mimeType: image.mimeType,
+              data: image.data.toString("base64"),
+            },
+          },
+        ],
+      },
+    ],
+    config: {
+      systemInstruction: systemPrompt,
+      responseMimeType: "application/json",
+      temperature: 0.1,
+    },
+  })
+  const text = (result as any).text ?? ""
+  return JSON.parse(text)
+}
+
+async function analyzeWithOpenRouter(
+  apiKey: string,
+  model: string,
+  systemPrompt: string,
+  userText: string,
+  image: { data: Buffer; mimeType: string },
+): Promise<any> {
+  const client = new OpenAI({
+    apiKey,
+    baseURL: "https://openrouter.ai/api/v1",
+    defaultHeaders: {
+      "HTTP-Referer": "https://accounting-app-vwork.vercel.app",
+      "X-Title": "Accounting app - receipt analyzer",
+    },
+  })
+  const dataUrl = `data:${image.mimeType};base64,${image.data.toString("base64")}`
+  const completion = await client.chat.completions.create({
+    model,
+    response_format: { type: "json_object" },
+    messages: [
+      { role: "system", content: systemPrompt },
+      {
+        role: "user",
+        content: [
+          { type: "text", text: userText },
+          { type: "image_url", image_url: { url: dataUrl } },
+        ],
+      },
+    ],
+  })
+  const text = completion.choices[0]?.message?.content ?? "{}"
+  try {
+    return JSON.parse(text)
+  } catch {
+    const m = text.match(/\{[\s\S]*\}/)
+    return m ? JSON.parse(m[0]) : {}
+  }
+}
+
 export async function POST(req: Request) {
-  const apiKey = process.env.OPENROUTER_API_KEY
-  const model = process.env.OPENROUTER_MODEL ?? "openrouter/owl-alpha"
-  if (!apiKey) {
+  const geminiKey = process.env.GEMINI_API_KEY
+  const geminiModel = process.env.GEMINI_MODEL ?? "gemini-2.0-flash-lite"
+  const orKey = process.env.OPENROUTER_API_KEY
+  const orModel = process.env.OPENROUTER_MODEL ?? "nvidia/nemotron-nano-12b-v2-vl:free"
+
+  if (!geminiKey && !orKey) {
     return NextResponse.json(
-      { error: "OPENROUTER_API_KEY not set" },
+      { error: "Neither GEMINI_API_KEY nor OPENROUTER_API_KEY is set" },
       { status: 503 },
     )
   }
   const body = Input.parse(await req.json())
 
-  // Pull the live account catalog so the model can pick valid ids.
   const accountsRows = await db.execute(sql`
     select id, code, name, account_type from accounts order by account_type, code nulls last
   `)
@@ -72,44 +158,48 @@ export async function POST(req: Request) {
   const cashAccounts = allAccounts.filter((a) => a.account_type === "asset")
   const expenseAccounts = allAccounts.filter((a) => a.account_type === "expense")
   const SYSTEM = buildSystem(cashAccounts, expenseAccounts)
+  const USER_TEXT =
+    "Extract receipt fields. Filename hint: " + (body.filename ?? "(none)")
 
-  const client = new OpenAI({
-    apiKey,
-    baseURL: "https://openrouter.ai/api/v1",
-    defaultHeaders: {
-      "HTTP-Referer": "https://accounting-app-vwork.vercel.app",
-      "X-Title": "Accounting app - receipt analyzer",
-    },
-  })
+  const image = await fetchImage(body.image_url)
 
-  const completion = await client.chat.completions.create({
-    model,
-    response_format: { type: "json_object" },
-    messages: [
-      { role: "system", content: SYSTEM },
-      {
-        role: "user",
-        content: [
-          {
-            type: "text",
-            text:
-              "Extract receipt fields. Filename hint: " +
-              (body.filename ?? "(none)"),
-          },
-          { type: "image_url", image_url: { url: body.image_url } },
-        ],
-      },
-    ],
-  })
-
-  const text = completion.choices[0]?.message?.content ?? "{}"
+  // Try Gemini first, fall back to OpenRouter on any error.
   let parsed: any = {}
-  try {
-    parsed = JSON.parse(text)
-  } catch {
-    // Tolerate models that wrap JSON in code fences.
-    const m = text.match(/\{[\s\S]*\}/)
-    parsed = m ? JSON.parse(m[0]) : {}
+  let provider = "none"
+  let lastError: any = null
+  if (geminiKey) {
+    try {
+      parsed = await analyzeWithGemini(
+        geminiKey,
+        geminiModel,
+        SYSTEM,
+        USER_TEXT,
+        image,
+      )
+      provider = `gemini:${geminiModel}`
+    } catch (e) {
+      lastError = e
+    }
+  }
+  if (provider === "none" && orKey) {
+    try {
+      parsed = await analyzeWithOpenRouter(
+        orKey,
+        orModel,
+        SYSTEM,
+        USER_TEXT,
+        image,
+      )
+      provider = `openrouter:${orModel}`
+    } catch (e) {
+      lastError = e
+    }
+  }
+  if (provider === "none") {
+    return NextResponse.json(
+      { error: `Both providers failed: ${(lastError as any)?.message ?? "unknown"}` },
+      { status: 502 },
+    )
   }
 
   const validAccountIds = new Set(cashAccounts.map((a) => a.id))
@@ -138,10 +228,9 @@ export async function POST(req: Request) {
     reasoning_steps: Array.isArray(parsed.reasoning_steps)
       ? parsed.reasoning_steps.map((s: any) => String(s))
       : [],
+    provider,
   }
 
-  // Persist the analysis on the receipt row so we can show "analyzed" badges
-  // and the existing audit-log trigger captures the event automatically.
   if (body.receipt_id) {
     try {
       await db
@@ -153,7 +242,7 @@ export async function POST(req: Request) {
         })
         .where(eq(receipts.id, body.receipt_id))
     } catch {
-      /* non-fatal — analysis result still returned to client */
+      /* non-fatal */
     }
   }
 
