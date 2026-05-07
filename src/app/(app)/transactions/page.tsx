@@ -203,6 +203,10 @@ export default function TransactionsPage() {
   const [overwritePrompt, setOverwritePrompt] = useState<null | {
     onAccept: () => void
   }>(null)
+  // The draft id (if any) the current modal session was resumed from. Cleared
+  // on reset/new; on successful save we delete this row so drafts don't
+  // linger as duplicates of real transactions.
+  const [resumedDraftId, setResumedDraftId] = useState<number | null>(null)
 
   // Auto-open the create modal when arrived via ?new=1 (from Dashboard quick-create).
   const searchParams = useSearchParams()
@@ -426,6 +430,7 @@ export default function TransactionsPage() {
     })
     setEditingId(null)
     setTab("simple")
+    setResumedDraftId(null)
   }
   const newTxn = () =>
     guardOverwrite(() => {
@@ -564,6 +569,10 @@ export default function TransactionsPage() {
         await api.put(`/api/transactions/${editingId}`, payload)
       else await api.post("/api/transactions", payload)
       setOpen(false)
+      if (resumedDraftId !== null) {
+        try { await api.delete(`/api/drafts/${resumedDraftId}`) } catch {}
+        reloadDrafts()
+      }
       resetForms()
       clearLocalDraft()
       invalidateCachePrefix("transactions:")
@@ -974,17 +983,25 @@ export default function TransactionsPage() {
                         )
                       })}
                     </div>
-                    {simple.tax_ids && simple.tax_ids.length > 0 && simple.amount > 0 && (() => {
-                      const selected = activeTaxes.filter((t) =>
-                        simple.tax_ids!.includes(t.id),
-                      )
-                      const sumRates = selected.reduce(
-                        (s, t) => s + Number(t.rate),
-                        0,
-                      )
-                      const net = simple.amount / (1 + sumRates)
-                      return (
-                        <div className="rounded-md border bg-muted/30 px-3 py-2 text-xs grid gap-1">
+                  </div>
+                )}
+                {simple.amount > 0 && (() => {
+                  const selected =
+                    simple.kind === "deposit"
+                      ? activeTaxes.filter((t) =>
+                          (simple.tax_ids ?? []).includes(t.id),
+                        )
+                      : []
+                  const sumRates = selected.reduce(
+                    (s, t) => s + Number(t.rate),
+                    0,
+                  )
+                  const net =
+                    sumRates > 0 ? simple.amount / (1 + sumRates) : simple.amount
+                  return (
+                    <div className="ml-auto rounded-md border bg-muted/30 px-4 py-3 text-sm grid gap-1 min-w-[14rem]">
+                      {selected.length > 0 && (
+                        <>
                           <div className="flex justify-between">
                             <span className="text-muted-fg">Net (excl. tax)</span>
                             <span className="font-mono tabular-nums">
@@ -1004,17 +1021,22 @@ export default function TransactionsPage() {
                               </span>
                             </div>
                           ))}
-                          <div className="flex justify-between border-t pt-1 font-semibold">
-                            <span>Total</span>
-                            <span className="font-mono tabular-nums">
-                              {fmtMoney(simple.amount)}
-                            </span>
-                          </div>
-                        </div>
-                      )
-                    })()}
-                  </div>
-                )}
+                        </>
+                      )}
+                      <div
+                        className={
+                          "flex justify-between font-semibold " +
+                          (selected.length > 0 ? "border-t pt-1" : "")
+                        }
+                      >
+                        <span>Grand total</span>
+                        <span className="font-mono tabular-nums">
+                          {fmtMoney(simple.amount)}
+                        </span>
+                      </div>
+                    </div>
+                  )
+                })()}
               </div>
             ) : (
               <div className="grid gap-4">
@@ -1242,6 +1264,7 @@ export default function TransactionsPage() {
                     onPress={() => {
                       try {
                         if (loadSnapshot(d.payload)) {
+                          setResumedDraftId(d.id)
                           setDraftsOpen(false)
                           setOpen(true)
                         }
