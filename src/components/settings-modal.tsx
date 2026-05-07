@@ -179,8 +179,8 @@ export function SettingsModal({
             <Tab id="app">App settings</Tab>
           </TabList>
           <TabPanels>
-            <TabPanel id="personal" className="pt-4">
-              <div className="grid gap-4 sm:grid-cols-2">
+            <TabPanel id="personal" className="pt-4 w-full">
+              <div className="grid gap-4 w-full sm:grid-cols-2">
                 <TextField
                   value={prefs.personal.display_name ?? ""}
                   onChange={(v) => set.personal("display_name", v)}
@@ -258,8 +258,8 @@ export function SettingsModal({
               </div>
             </TabPanel>
 
-            <TabPanel id="business" className="pt-4">
-              <div className="grid gap-4 sm:grid-cols-2">
+            <TabPanel id="business" className="pt-4 w-full">
+              <div className="grid gap-4 w-full sm:grid-cols-2">
                 <TextField
                   value={prefs.business.business_name ?? ""}
                   onChange={(v) => set.business("business_name", v)}
@@ -400,8 +400,8 @@ export function SettingsModal({
               </div>
             </TabPanel>
 
-            <TabPanel id="app" className="pt-4">
-              <div className="grid gap-4 sm:grid-cols-2">
+            <TabPanel id="app" className="pt-4 w-full">
+              <div className="grid gap-4 w-full sm:grid-cols-2">
                 <div className="grid gap-1.5">
                   <Label>Theme</Label>
                   <Select

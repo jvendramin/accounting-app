@@ -29,7 +29,14 @@ import {
 import { ChevronUpDownIcon } from "@heroicons/react/24/outline"
 import { auth } from "@/lib/auth"
 import { SettingsModal } from "@/components/settings-modal"
-import { Cog6ToothIcon } from "@heroicons/react/24/outline"
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group"
+import { useTheme } from "@/components/theme-provider"
+import {
+  Cog6ToothIcon,
+  SunIcon,
+  MoonIcon,
+  ComputerDesktopIcon,
+} from "@heroicons/react/24/outline"
 import {
   IconCircleQuestionmark,
   IconChartBar,
@@ -68,6 +75,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const session = auth.useSession()
   const user = session.data?.user
   const [settingsOpen, setSettingsOpen] = useState(false)
+  const { theme, setTheme } = useTheme()
   const [txCount, setTxCount] = useState<number | null>(null)
   useEffect(() => {
     fetch("/api/transactions/count_recent")
@@ -230,6 +238,32 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 <Cog6ToothIcon />
                 <MenuLabel>Settings</MenuLabel>
               </MenuItem>
+              <div
+                role="presentation"
+                className="px-2 py-1.5"
+                onKeyDownCapture={(e) => e.stopPropagation()}
+              >
+                <ToggleGroup
+                  size="sm"
+                  selectedKeys={new Set([theme ?? "system"])}
+                  onSelectionChange={(keys) => {
+                    const k = [...keys][0]
+                    if (k) setTheme(k as "light" | "dark" | "system")
+                  }}
+                  className="w-full *:[button]:flex-1"
+                  aria-label="Theme"
+                >
+                  <ToggleGroupItem id="light" aria-label="Light">
+                    <SunIcon />
+                  </ToggleGroupItem>
+                  <ToggleGroupItem id="dark" aria-label="Dark">
+                    <MoonIcon />
+                  </ToggleGroupItem>
+                  <ToggleGroupItem id="system" aria-label="System">
+                    <ComputerDesktopIcon />
+                  </ToggleGroupItem>
+                </ToggleGroup>
+              </div>
               <MenuSeparator />
               <MenuItem intent="danger" onAction={() => auth.signOut()}>
                 <IconLogout />
