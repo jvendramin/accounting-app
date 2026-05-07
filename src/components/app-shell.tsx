@@ -234,10 +234,6 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                   </MenuHeader>
                 </MenuSection>
               )}
-              <MenuItem onAction={() => setSettingsOpen(true)}>
-                <Cog6ToothIcon />
-                <MenuLabel>Settings</MenuLabel>
-              </MenuItem>
               <MenuSection>
                 <MenuHeader
                   className="col-span-full px-2 py-1.5 font-normal"
@@ -266,6 +262,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 </MenuHeader>
               </MenuSection>
               <MenuSeparator />
+              <MenuItem onAction={() => setSettingsOpen(true)}>
+                <Cog6ToothIcon />
+                <MenuLabel>Settings</MenuLabel>
+              </MenuItem>
               <MenuItem intent="danger" onAction={() => auth.signOut()}>
                 <IconLogout />
                 Sign out
