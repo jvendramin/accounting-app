@@ -1,42 +1,22 @@
-// Centralised icon imports — heroicons by default per Intent UI starter,
-// renamed to "Icon*" for clarity at call-sites.
+// Centralised icon imports — switched from heroicons to lucide-react so
+// the default 2px stroke reads visibly heavier than heroicons' 1.5px,
+// especially for the primary "+" CTA.
 export {
-  HomeIcon as IconHome,
-  ArrowsRightLeftIcon as IconArrowLeftRight,
-  BookOpenIcon as IconBookOpen,
-  ReceiptPercentIcon as IconReceipt,
-  ArrowUpTrayIcon as IconUpload,
-  ChartBarIcon as IconChartBar,
-  ScaleIcon as IconCircleQuestionmark,
-  WalletIcon as IconWallet,
-  ArrowRightOnRectangleIcon as IconLogout,
-  PencilSquareIcon as IconPencil,
-  TrashIcon as IconTrash,
-  MagnifyingGlassIcon as IconSearch,
-  XMarkIcon as IconX,
-  TagIcon as IconTag,
-  ClockIcon as IconActivity,
-  CalculatorIcon as IconTax,
-} from "@heroicons/react/24/outline"
-
-// Heavier "+" glyph for primary CTAs — heroicons' outline and solid
-// variants both render thin against vivid fills, so use a hand-rolled
-// SVG with stroke-width 3.
-export function IconPlus(props: React.SVGProps<SVGSVGElement>) {
-  return (
-    <svg
-      xmlns="http://www.w3.org/2000/svg"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth={3}
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden="true"
-      data-slot="icon"
-      {...props}
-    >
-      <path d="M12 5v14M5 12h14" />
-    </svg>
-  )
-}
+  Home as IconHome,
+  ArrowLeftRight as IconArrowLeftRight,
+  BookOpen as IconBookOpen,
+  ReceiptText as IconReceipt,
+  Upload as IconUpload,
+  BarChart3 as IconChartBar,
+  Scale as IconCircleQuestionmark,
+  Wallet as IconWallet,
+  LogOut as IconLogout,
+  SquarePen as IconPencil,
+  Trash2 as IconTrash,
+  Plus as IconPlus,
+  Search as IconSearch,
+  X as IconX,
+  Tag as IconTag,
+  Clock as IconActivity,
+  Calculator as IconTax,
+} from "lucide-react"
