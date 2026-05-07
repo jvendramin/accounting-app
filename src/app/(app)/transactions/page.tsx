@@ -655,11 +655,11 @@ export default function TransactionsPage() {
                 {showFilters ? "Hide" : "Filters"}
               </Button>
               <ButtonGroup>
-                <Button size="sm" onPress={newTxn}>
+                <Button intent="secondary" size="sm" onPress={newTxn}>
                   <IconPlus /> New
                 </Button>
-                <MenuTrigger>
-                  <Button size="sm" aria-label="More">
+                <Menu>
+                  <Button intent="secondary" size="sm" aria-label="More">
                     <EllipsisHorizontalIcon />
                   </Button>
                   <MenuContent placement="bottom end">
@@ -673,7 +673,7 @@ export default function TransactionsPage() {
                       Drafts {drafts.length > 0 ? `(${drafts.length})` : ""}
                     </MenuItem>
                   </MenuContent>
-                </MenuTrigger>
+                </Menu>
               </ButtonGroup>
             </div>
           </div>
@@ -738,11 +738,11 @@ export default function TransactionsPage() {
               )}
             </div>
             <ButtonGroup className="hidden sm:inline-flex">
-              <Button onPress={newTxn}>
+              <Button intent="secondary" onPress={newTxn}>
                 <IconPlus /> New
               </Button>
-              <MenuTrigger>
-                <Button aria-label="More">
+              <Menu>
+                <Button intent="secondary" aria-label="More">
                   <EllipsisHorizontalIcon />
                 </Button>
                 <MenuContent placement="bottom end">
@@ -756,7 +756,7 @@ export default function TransactionsPage() {
                     Drafts {drafts.length > 0 ? `(${drafts.length})` : ""}
                   </MenuItem>
                 </MenuContent>
-              </MenuTrigger>
+              </Menu>
             </ButtonGroup>
           </div>
         </CardHeader>
