@@ -199,10 +199,10 @@ export default function TransactionsPage() {
     reloadDrafts()
   }, [])
 
-  // Pending-overwrite prompt: queued action runs after the user accepts.
-  const [overwritePrompt, setOverwritePrompt] = useState<null | {
-    onAccept: () => void
-  }>(null)
+  // Close-confirm prompt: shown when the user tries to dismiss the modal
+  // with unsaved progress. Choices: save as draft, or discard.
+  const [closePrompt, setClosePrompt] = useState(false)
+  const [savingDraft, setSavingDraft] = useState(false)
   // The draft id (if any) the current modal session was resumed from. Cleared
   // on reset/new; on successful save we delete this row so drafts don't
   // linger as duplicates of real transactions.
@@ -219,7 +219,7 @@ export default function TransactionsPage() {
         setOpen(true)
       }
       router.replace(pathname)
-      guardOverwrite(go)
+      go()
     } else if (searchParams.get("from-receipt") === "1") {
       const raw = sessionStorage.getItem("receipt-prefill")
       sessionStorage.removeItem("receipt-prefill")
@@ -259,7 +259,7 @@ export default function TransactionsPage() {
         } catch {}
       }
       router.replace(pathname)
-      guardOverwrite(apply)
+      apply()
     } else if (searchParams.get("clone") === "1") {
       const raw = sessionStorage.getItem("clone-tx")
       sessionStorage.removeItem("clone-tx")
@@ -308,7 +308,7 @@ export default function TransactionsPage() {
         }
       }
       router.replace(pathname)
-      guardOverwrite(apply)
+      apply()
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams])
@@ -332,7 +332,6 @@ export default function TransactionsPage() {
   })
 
   // ---- Autosave to localStorage ----
-  const DRAFT_KEY = "tx-modal-draft"
   const snapshotForm = () => ({ tab, simple, journal, editingId })
   const loadSnapshot = (s: any) => {
     if (!s || typeof s !== "object") {
@@ -367,48 +366,24 @@ export default function TransactionsPage() {
     setEditingId(s.editingId ?? null)
     return true
   }
-  const hasDraftInStorage = () => {
-    if (typeof window === "undefined") return false
-    const raw = localStorage.getItem(DRAFT_KEY)
-    if (!raw) return false
-    try {
-      const v = JSON.parse(raw)
-      // Treat truly-empty (no description, no amount, no edits) as no draft.
-      const empty =
-        !v?.simple?.description &&
-        !v?.simple?.amount &&
-        !v?.journal?.description &&
-        !(v?.journal?.lines ?? []).some(
-          (l: any) => l?.account_id || l?.debit || l?.credit || l?.memo,
-        )
-      return !empty
-    } catch {
-      return false
-    }
-  }
-  // Persist on every form change while modal is open.
-  useEffect(() => {
-    if (!open) return
-    if (typeof window === "undefined") return
-    localStorage.setItem(DRAFT_KEY, JSON.stringify(snapshotForm()))
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, simple, journal, tab, editingId])
-  const clearLocalDraft = () => {
-    if (typeof window !== "undefined") localStorage.removeItem(DRAFT_KEY)
-  }
-
-  // Wrap actions that would overwrite in-progress work.
-  const guardOverwrite = (action: () => void) => {
-    if (hasDraftInStorage() && !open) {
-      setOverwritePrompt({
-        onAccept: () => {
-          clearLocalDraft()
-          action()
-        },
-      })
-    } else {
-      action()
-    }
+  // Whether the in-memory form has anything worth offering as a draft on close.
+  const hasUnsavedProgress = () => {
+    const s = simple
+    const j = journal
+    const simpleDirty =
+      !!s.description ||
+      !!s.reference ||
+      (s.amount ?? 0) > 0 ||
+      s.account_id !== undefined ||
+      s.category_id !== undefined ||
+      (s.tax_ids?.length ?? 0) > 0
+    const journalDirty =
+      !!j.description ||
+      !!j.reference ||
+      j.lines.some(
+        (l) => l.account_id || Number(l.debit) || Number(l.credit) || l.memo,
+      )
+    return tab === "simple" ? simpleDirty : journalDirty
   }
 
   const resetForms = () => {
@@ -432,11 +407,48 @@ export default function TransactionsPage() {
     setTab("simple")
     setResumedDraftId(null)
   }
-  const newTxn = () =>
-    guardOverwrite(() => {
+  const newTxn = () => {
+    resetForms()
+    setOpen(true)
+  }
+
+  const discardAndClose = () => {
+    setOpen(false)
+    setClosePrompt(false)
+    resetForms()
+    setAiReason(null)
+  }
+  const saveAsDraft = async () => {
+    const name =
+      (tab === "simple" ? simple.description : journal.description) ||
+      `Draft ${new Date().toLocaleString()}`
+    setSavingDraft(true)
+    try {
+      if (resumedDraftId !== null) {
+        await api.put(`/api/drafts/${resumedDraftId}`, {
+          draft: { name, payload: snapshotForm() },
+        })
+      } else {
+        await api.post("/api/drafts", {
+          draft: { name, payload: snapshotForm() },
+        })
+      }
+      toast.success("Saved as draft")
+      reloadDrafts()
+      setOpen(false)
+      setClosePrompt(false)
       resetForms()
-      setOpen(true)
-    })
+      setAiReason(null)
+    } catch {
+      /* toasted */
+    } finally {
+      setSavingDraft(false)
+    }
+  }
+  const attemptClose = () => {
+    if (hasUnsavedProgress()) setClosePrompt(true)
+    else discardAndClose()
+  }
 
   const editTxn = (t: Txn) => {
     setEditingId(t.id)
@@ -572,7 +584,6 @@ export default function TransactionsPage() {
         reloadDrafts()
       }
       resetForms()
-      clearLocalDraft()
       invalidateCachePrefix("transactions:")
       invalidateCache(
         "dashboard:reports/profit_and_loss",
@@ -790,9 +801,17 @@ export default function TransactionsPage() {
       <ModalContent
         size="3xl"
         isOpen={open}
+        isDismissable={false}
+        isKeyboardDismissDisabled
         onOpenChange={(v) => {
-          setOpen(v)
-          if (!v) {
+          if (v) {
+            setOpen(true)
+            return
+          }
+          if (hasUnsavedProgress()) {
+            setClosePrompt(true)
+          } else {
+            setOpen(false)
             resetForms()
             setAiReason(null)
           }
@@ -1196,28 +1215,14 @@ export default function TransactionsPage() {
             </Button>
             <Button
               intent="outline"
-              onPress={async () => {
-                const name =
-                  (tab === "simple" ? simple.description : journal.description) ||
-                  `Draft ${new Date().toLocaleString()}`
-                try {
-                  await api.post("/api/drafts", {
-                    draft: { name, payload: snapshotForm() },
-                  })
-                  toast.success("Saved as draft")
-                  clearLocalDraft()
-                  setOpen(false)
-                  resetForms()
-                } catch {
-                  /* toasted */
-                }
-              }}
+              onPress={saveAsDraft}
+              isPending={savingDraft}
             >
               Save draft
             </Button>
             <Button
               intent="outline"
-              onPress={() => setOpen(false)}
+              onPress={attemptClose}
               className="hidden sm:inline-flex"
             >
               Cancel
@@ -1288,52 +1293,37 @@ export default function TransactionsPage() {
         </ModalBody>
       </ModalContent>
 
-      {/* Overwrite-in-progress confirm */}
+      {/* Close-confirm: save as draft or discard */}
       <ModalContent
         size="md"
         role="alertdialog"
-        isOpen={!!overwritePrompt}
+        isOpen={closePrompt}
         onOpenChange={(v) => {
-          if (!v) setOverwritePrompt(null)
+          if (!v) setClosePrompt(false)
         }}
       >
         <ModalHeader>
-          <ModalTitle>You have unsaved progress</ModalTitle>
+          <ModalTitle>Save as draft?</ModalTitle>
         </ModalHeader>
         <ModalBody>
           <p className="text-sm">
-            Discard your in-progress transaction and continue? You can also
-            close this and use{" "}
-            <span className="font-medium">Save draft</span> to keep it.
+            You have unsaved progress on this transaction. Save it as a draft
+            to resume later, or discard your changes.
           </p>
         </ModalBody>
         <ModalFooter>
           <Button
             intent="outline"
-            onPress={() => {
-              setOverwritePrompt(null)
-              try {
-                const raw =
-                  typeof window !== "undefined"
-                    ? localStorage.getItem(DRAFT_KEY)
-                    : null
-                if (raw && loadSnapshot(JSON.parse(raw))) setOpen(true)
-              } catch {
-                /* ignore — corrupt snapshot just dismisses */
-              }
-            }}
+            onPress={() => setClosePrompt(false)}
+            className="hidden sm:inline-flex"
           >
             Keep editing
           </Button>
-          <Button
-            intent="danger"
-            onPress={() => {
-              const fn = overwritePrompt?.onAccept
-              setOverwritePrompt(null)
-              fn?.()
-            }}
-          >
-            Discard &amp; continue
+          <Button intent="danger" onPress={discardAndClose}>
+            Discard
+          </Button>
+          <Button onPress={saveAsDraft} isPending={savingDraft}>
+            Save as draft
           </Button>
         </ModalFooter>
       </ModalContent>
