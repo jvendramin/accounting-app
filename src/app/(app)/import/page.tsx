@@ -272,7 +272,7 @@ export default function ImportPage() {
                     <SelectContent>
                       {cashAccounts.map((a) => (
                         <SelectItem key={a.id} id={String(a.id)}>
-                          {a.code} — {a.name}
+                          {`${a.code} — ${a.name}`}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -295,7 +295,7 @@ export default function ImportPage() {
                         : expenseAccounts
                       ).map((a) => (
                         <SelectItem key={a.id} id={String(a.id)}>
-                          {a.code} — {a.name}
+                          {`${a.code} — ${a.name}`}
                         </SelectItem>
                       ))}
                     </SelectContent>

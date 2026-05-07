@@ -761,7 +761,7 @@ export default function TransactionsPage() {
                       <SelectContent>
                         {cashAccounts.map((a) => (
                           <SelectItem key={a.id} id={String(a.id)}>
-                            {a.code} — {a.name}
+                            {`${a.code} — ${a.name}`}
                           </SelectItem>
                         ))}
                       </SelectContent>
@@ -798,7 +798,7 @@ export default function TransactionsPage() {
                           : expenseAccounts
                         ).map((a) => (
                           <SelectItem key={a.id} id={String(a.id)}>
-                            {a.code} — {a.name}
+                            {`${a.code} — ${a.name}`}
                           </SelectItem>
                         ))}
                       </SelectContent>
@@ -952,7 +952,7 @@ export default function TransactionsPage() {
                                 <SelectContent>
                                   {accounts.map((a) => (
                                     <SelectItem key={a.id} id={String(a.id)}>
-                                      {a.code} — {a.name}
+                                      {`${a.code} — ${a.name}`}
                                     </SelectItem>
                                   ))}
                                 </SelectContent>

@@ -162,7 +162,7 @@ function TxnForm({ onSaved }: { onSaved: () => void }) {
               <SelectContent>
                 {cashAccounts.map((a) => (
                   <SelectItem key={a.id} id={String(a.id)}>
-                    {a.code} — {a.name}
+                    {`${a.code} — ${a.name}`}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -189,7 +189,7 @@ function TxnForm({ onSaved }: { onSaved: () => void }) {
                 {(kind === "deposit" ? incomeAccounts : expenseAccounts).map(
                   (a) => (
                     <SelectItem key={a.id} id={String(a.id)}>
-                      {a.code} — {a.name}
+                      {`${a.code} — ${a.name}`}
                     </SelectItem>
                   ),
                 )}
