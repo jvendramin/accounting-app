@@ -1149,110 +1149,121 @@ export default function TransactionsPage() {
                       <IconPlus /> Add line
                     </Button>
                   </div>
-                  <div className="rounded-md border overflow-x-auto">
-                    <table className="w-full text-sm">
-                      <thead className="bg-muted/30">
-                        <tr>
-                          <th className="p-2 text-left">Memo</th>
-                          <th className="p-2 text-left">Account</th>
-                          <th className="p-2 text-right">Debit</th>
-                          <th className="p-2 text-right">Credit</th>
-                          <th className="p-2"></th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {journal.lines.map((l, i) => (
-                          <tr key={i} className="border-t">
-                            <td className="p-2">
-                              <TextField
-                                value={l.memo ?? ""}
-                                onChange={(v) => updateLine(i, { memo: v })}
-                                aria-label="memo"
-                              >
-                                <Input placeholder="memo" />
-                              </TextField>
-                            </td>
-                            <td className="p-2">
-                              <ComboBox
-                                aria-label="Account"
-                                selectedKey={l.account_id ?? null}
-                                onSelectionChange={(k) =>
-                                  updateLine(i, {
-                                    account_id:
-                                      k == null ? undefined : Number(k),
-                                  })
-                                }
-                              >
-                                <ComboBoxInput placeholder="Select" />
-                                <ComboBoxContent items={accounts}>
-                                  {(a) => (
-                                    <ComboBoxItem
-                                      id={a.id}
-                                      textValue={`${a.code} — ${a.name}`}
-                                    >
-                                      {`${a.code} — ${a.name}`}
-                                    </ComboBoxItem>
-                                  )}
-                                </ComboBoxContent>
-                              </ComboBox>
-                            </td>
-                            <td className="p-2">
-                              <NumberField
-                                value={Number(l.debit) || 0}
-                                onChange={(v) =>
-                                  updateLine(i, {
-                                    debit: Number.isFinite(v) ? v : 0,
-                                  })
-                                }
-                                minValue={0}
-                                step={0.01}
-                                formatOptions={{
-                                  style: "decimal",
-                                  minimumFractionDigits: 2,
-                                }}
-                                aria-label="Debit"
-                              >
-                                <NumberInput
-                                  leading={<CurrencyDollarIcon />}
-                                  className="text-right"
-                                />
-                              </NumberField>
-                            </td>
-                            <td className="p-2">
-                              <NumberField
-                                value={Number(l.credit) || 0}
-                                onChange={(v) =>
-                                  updateLine(i, {
-                                    credit: Number.isFinite(v) ? v : 0,
-                                  })
-                                }
-                                minValue={0}
-                                step={0.01}
-                                formatOptions={{
-                                  style: "decimal",
-                                  minimumFractionDigits: 2,
-                                }}
-                                aria-label="Credit"
-                              >
-                                <NumberInput
-                                  leading={<CurrencyDollarIcon />}
-                                  className="text-right"
-                                />
-                              </NumberField>
-                            </td>
-                            <td className="p-2">
-                              <Button
-                                intent="plain"
-                                size="sq-sm"
-                                onPress={() => removeLine(i)}
-                              >
-                                <IconTrash />
-                              </Button>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
+                  {/* Desktop: 5-column header. Hidden on mobile. */}
+                  <div className="hidden sm:grid grid-cols-[2fr_3fr_1.4fr_1.4fr_auto] gap-2 px-2 text-xs font-medium text-muted-fg">
+                    <div>Memo</div>
+                    <div>Account</div>
+                    <div className="text-right">Debit</div>
+                    <div className="text-right">Credit</div>
+                    <div className="w-9" />
+                  </div>
+                  <div className="grid gap-3 sm:gap-2">
+                    {journal.lines.map((l, i) => (
+                      <div
+                        key={i}
+                        className="rounded-md border bg-muted/20 p-3 grid gap-3 sm:bg-transparent sm:border-0 sm:rounded-none sm:p-0 sm:grid-cols-[2fr_3fr_1.4fr_1.4fr_auto] sm:items-start sm:gap-2"
+                      >
+                        <div className="grid gap-1 sm:gap-0">
+                          <span className="text-xs font-medium text-muted-fg sm:hidden">
+                            Memo
+                          </span>
+                          <TextField
+                            value={l.memo ?? ""}
+                            onChange={(v) => updateLine(i, { memo: v })}
+                            aria-label="memo"
+                          >
+                            <Input placeholder="Memo" />
+                          </TextField>
+                        </div>
+                        <div className="grid gap-1 sm:gap-0">
+                          <span className="text-xs font-medium text-muted-fg sm:hidden">
+                            Account
+                          </span>
+                          <ComboBox
+                            aria-label="Account"
+                            selectedKey={l.account_id ?? null}
+                            onSelectionChange={(k) =>
+                              updateLine(i, {
+                                account_id:
+                                  k == null ? undefined : Number(k),
+                              })
+                            }
+                          >
+                            <ComboBoxInput placeholder="Select account" />
+                            <ComboBoxContent items={accounts}>
+                              {(a) => (
+                                <ComboBoxItem
+                                  id={a.id}
+                                  textValue={`${a.code} — ${a.name}`}
+                                >
+                                  {`${a.code} — ${a.name}`}
+                                </ComboBoxItem>
+                              )}
+                            </ComboBoxContent>
+                          </ComboBox>
+                        </div>
+                        <div className="grid gap-1 sm:gap-0">
+                          <span className="text-xs font-medium text-muted-fg sm:hidden">
+                            Debit
+                          </span>
+                          <NumberField
+                            value={Number(l.debit) || 0}
+                            onChange={(v) =>
+                              updateLine(i, {
+                                debit: Number.isFinite(v) ? v : 0,
+                              })
+                            }
+                            minValue={0}
+                            step={0.01}
+                            formatOptions={{
+                              style: "decimal",
+                              minimumFractionDigits: 2,
+                            }}
+                            aria-label="Debit"
+                          >
+                            <NumberInput
+                              leading={<CurrencyDollarIcon />}
+                              className="text-right"
+                            />
+                          </NumberField>
+                        </div>
+                        <div className="grid gap-1 sm:gap-0">
+                          <span className="text-xs font-medium text-muted-fg sm:hidden">
+                            Credit
+                          </span>
+                          <NumberField
+                            value={Number(l.credit) || 0}
+                            onChange={(v) =>
+                              updateLine(i, {
+                                credit: Number.isFinite(v) ? v : 0,
+                              })
+                            }
+                            minValue={0}
+                            step={0.01}
+                            formatOptions={{
+                              style: "decimal",
+                              minimumFractionDigits: 2,
+                            }}
+                            aria-label="Credit"
+                          >
+                            <NumberInput
+                              leading={<CurrencyDollarIcon />}
+                              className="text-right"
+                            />
+                          </NumberField>
+                        </div>
+                        <div className="flex justify-end sm:items-start sm:pt-1">
+                          <Button
+                            intent="plain"
+                            size="sq-sm"
+                            aria-label="Remove line"
+                            onPress={() => removeLine(i)}
+                          >
+                            <IconTrash />
+                          </Button>
+                        </div>
+                      </div>
+                    ))}
                   </div>
                 </div>
                 <div className="ml-auto rounded-md border bg-muted/30 px-4 py-3 grid grid-cols-2 gap-x-8 gap-y-1 text-sm">
