@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 import localFont from "next/font/local";
 import { ThemeProvider, themeBootstrapScript } from "@/components/theme-provider";
+import { AriaRouterProvider } from "@/components/router-provider";
 import { Toaster } from "sonner";
 
 const fontSans = localFont({
@@ -49,7 +50,7 @@ export default function RootLayout({
       </head>
       <body className={`${fontSans.variable} ${fontMono.variable} antialiased`}>
         <ThemeProvider>
-          {children}
+          <AriaRouterProvider>{children}</AriaRouterProvider>
           <Toaster richColors closeButton />
         </ThemeProvider>
       </body>

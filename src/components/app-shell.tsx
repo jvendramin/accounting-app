@@ -51,7 +51,7 @@ import {
   IconActivity,
   IconTax,
 } from "@/components/icons"
-import { usePathname } from "next/navigation"
+import { usePathname, useRouter } from "next/navigation"
 import { useEffect, useState } from "react"
 
 const titles: Record<string, string> = {
@@ -75,6 +75,25 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const session = auth.useSession()
   const user = session.data?.user
   const [settingsOpen, setSettingsOpen] = useState(false)
+  const sidebarRouter = useRouter()
+  // Pre-warm every sidebar destination so route changes feel instant.
+  useEffect(() => {
+    const targets = [
+      "/",
+      "/transactions",
+      "/accounts",
+      "/categories",
+      "/taxes",
+      "/receipts",
+      "/import",
+      "/activity",
+      "/reports/pnl",
+      "/reports/balance-sheet",
+      "/reports/cashflow",
+      "/reports/taxes",
+    ]
+    targets.forEach((p) => sidebarRouter.prefetch(p))
+  }, [sidebarRouter])
   const { theme, setTheme } = useTheme()
   const [txCount, setTxCount] = useState<number | null>(null)
   useEffect(() => {

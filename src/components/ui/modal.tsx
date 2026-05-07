@@ -69,8 +69,8 @@ const ModalContent = ({
         "fixed start-0 top-0 z-50 h-(--visual-viewport-height,100vh) w-screen",
         "bg-bg/15 backdrop-blur-[1px] motion-reduce:backdrop-blur-none",
         "grid grid-rows-[1fr_auto] justify-items-center sm:grid-rows-[1fr_auto_3fr]",
-        "entering:fade-in entering:animate-in entering:duration-300 entering:ease-out",
-        "exiting:fade-out exiting:animate-out exiting:ease-in",
+        "entering:fade-in entering:animate-in entering:duration-150 entering:ease-out",
+        "exiting:fade-out exiting:animate-out exiting:duration-100 exiting:ease-in",
         size === "fullscreen" ? "md:p-3" : "md:p-4",
         overlay?.className,
       )}
@@ -87,8 +87,8 @@ const ModalContent = ({
           "relative overflow-hidden bg-overlay text-overlay-fg",
           "inset-shadow-xs rounded-t-2xl ring ring-muted-fg/25 drop-shadow-xl sm:rounded-2xl dark:ring-border",
           sizes[size],
-          "entering:slide-in-from-bottom sm:entering:zoom-in-95 sm:entering:slide-in-from-bottom-0 entering:animate-in entering:duration-300 entering:ease-out",
-          "exiting:slide-out-to-bottom sm:exiting:zoom-out-95 sm:exiting:slide-out-to-bottom-0 exiting:animate-out exiting:ease-in",
+          "entering:slide-in-from-bottom sm:entering:zoom-in-95 sm:entering:slide-in-from-bottom-0 entering:animate-in entering:duration-150 entering:ease-out",
+          "exiting:slide-out-to-bottom sm:exiting:zoom-out-95 sm:exiting:slide-out-to-bottom-0 exiting:animate-out exiting:duration-100 exiting:ease-in",
           className,
         )}
       >
