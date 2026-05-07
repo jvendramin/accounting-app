@@ -159,7 +159,7 @@ If you want to use the typography plugin, uncomment the line below.
   --chart-4: oklch(0.855 0.138 181.071);
   --chart-5: oklch(0.91 0.096 180.426);
 
-  --radius-lg: 1.5rem;
+  --radius-lg: 1rem;
   --radius-xs: calc(var(--radius-lg) * 0.25);
   --radius-sm: calc(var(--radius-lg) * 0.5);
   --radius-md: calc(var(--radius-lg) * 0.75);
