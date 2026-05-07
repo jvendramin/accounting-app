@@ -6,11 +6,11 @@ import { TextField } from "@/components/ui/text-field"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/field"
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-} from "@/components/ui/select"
+  ComboBox,
+  ComboBoxContent,
+  ComboBoxInput,
+  ComboBoxItem,
+} from "@/components/ui/combo-box"
 import { DatePicker, DatePickerTrigger } from "@/components/ui/date-picker"
 import { parseDate } from "@internationalized/date"
 import { NumberField, NumberInput } from "@/components/ui/number-field"
@@ -308,37 +308,37 @@ function TxnForm({
           </TextField>
         </div>
         <div className="grid gap-4 sm:grid-cols-2">
-          <div className="grid gap-1.5">
+          <ComboBox
+            aria-label="Type"
+            selectedKey={kind}
+            onSelectionChange={(k) =>
+              setKind((k ?? "deposit") as "deposit" | "withdrawal")
+            }
+          >
             <Label>Type</Label>
-            <Select
-              aria-label="Kind"
-              selectedKey={kind}
-              onSelectionChange={(k) => setKind(k as "deposit" | "withdrawal")}
-            >
-              <SelectTrigger />
-              <SelectContent>
-                <SelectItem id="deposit">Deposit</SelectItem>
-                <SelectItem id="withdrawal">Withdrawal</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="grid gap-1.5">
+            <ComboBoxInput placeholder="Select type" />
+            <ComboBoxContent>
+              <ComboBoxItem id="deposit">Deposit</ComboBoxItem>
+              <ComboBoxItem id="withdrawal">Withdrawal</ComboBoxItem>
+            </ComboBoxContent>
+          </ComboBox>
+          <ComboBox
+            aria-label="Account"
+            selectedKey={accountId ?? null}
+            onSelectionChange={(k) =>
+              setAccountId(k == null ? undefined : Number(k))
+            }
+          >
             <Label>Account</Label>
-            <Select
-              aria-label="Account"
-              selectedKey={accountId ? String(accountId) : undefined}
-              onSelectionChange={(k) => setAccountId(Number(k))}
-            >
-              <SelectTrigger />
-              <SelectContent>
-                {cashAccounts.map((a) => (
-                  <SelectItem key={a.id} id={String(a.id)}>
-                    {`${a.code} — ${a.name}`}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+            <ComboBoxInput placeholder="Select account" />
+            <ComboBoxContent items={cashAccounts}>
+              {(a) => (
+                <ComboBoxItem id={a.id} textValue={`${a.code} — ${a.name}`}>
+                  {`${a.code} — ${a.name}`}
+                </ComboBoxItem>
+              )}
+            </ComboBoxContent>
+          </ComboBox>
         </div>
         <div className="grid gap-4 sm:grid-cols-2">
           <NumberField
@@ -351,25 +351,25 @@ function TxnForm({
             <Label>Amount</Label>
             <NumberInput leading={<CurrencyDollarIcon />} />
           </NumberField>
-          <div className="grid gap-1.5">
+          <ComboBox
+            aria-label="Category"
+            selectedKey={categoryId ?? null}
+            onSelectionChange={(k) =>
+              setCategoryId(k == null ? undefined : Number(k))
+            }
+          >
             <Label>Category</Label>
-            <Select
-              aria-label="Category"
-              selectedKey={categoryId ? String(categoryId) : undefined}
-              onSelectionChange={(k) => setCategoryId(Number(k))}
+            <ComboBoxInput placeholder="Select category" />
+            <ComboBoxContent
+              items={kind === "deposit" ? incomeAccounts : expenseAccounts}
             >
-              <SelectTrigger />
-              <SelectContent>
-                {(kind === "deposit" ? incomeAccounts : expenseAccounts).map(
-                  (a) => (
-                    <SelectItem key={a.id} id={String(a.id)}>
-                      {`${a.code} — ${a.name}`}
-                    </SelectItem>
-                  ),
-                )}
-              </SelectContent>
-            </Select>
-          </div>
+              {(a) => (
+                <ComboBoxItem id={a.id} textValue={`${a.code} — ${a.name}`}>
+                  {`${a.code} — ${a.name}`}
+                </ComboBoxItem>
+              )}
+            </ComboBoxContent>
+          </ComboBox>
         </div>
         <TextField value={description} onChange={setDescription}>
           <Label>Description</Label>
@@ -435,23 +435,23 @@ function AccountForm({ onSaved, onCancel, onDirtyChange }: CommonFormProps) {
           <Label>Code</Label>
           <Input />
         </TextField>
-        <div className="grid gap-1.5">
+        <ComboBox
+          aria-label="Type"
+          selectedKey={accountType}
+          onSelectionChange={(k) =>
+            k && setAccountType(k as (typeof TYPES)[number])
+          }
+        >
           <Label>Type</Label>
-          <Select
-            aria-label="Type"
-            selectedKey={accountType}
-            onSelectionChange={(k) => setAccountType(k as (typeof TYPES)[number])}
-          >
-            <SelectTrigger />
-            <SelectContent>
-              {TYPES.map((t) => (
-                <SelectItem key={t} id={t}>
-                  {titleCase(t)}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
+          <ComboBoxInput placeholder="Select type" />
+          <ComboBoxContent>
+            {TYPES.map((t) => (
+              <ComboBoxItem key={t} id={t} textValue={titleCase(t)}>
+                {titleCase(t)}
+              </ComboBoxItem>
+            ))}
+          </ComboBoxContent>
+        </ComboBox>
       </ModalBody>
       <ModalFooter className="pt-4 sm:pt-3">
         <Button
@@ -506,20 +506,20 @@ function CategoryForm({ onSaved, onCancel, onDirtyChange }: CommonFormProps) {
           <Label>Name</Label>
           <Input />
         </TextField>
-        <div className="grid gap-1.5">
+        <ComboBox
+          aria-label="Kind"
+          selectedKey={kind}
+          onSelectionChange={(k) =>
+            k && setKind(k as "income" | "expense")
+          }
+        >
           <Label>Kind</Label>
-          <Select
-            aria-label="Kind"
-            selectedKey={kind}
-            onSelectionChange={(k) => setKind(k as "income" | "expense")}
-          >
-            <SelectTrigger />
-            <SelectContent>
-              <SelectItem id="income">Income</SelectItem>
-              <SelectItem id="expense">Expense</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
+          <ComboBoxInput placeholder="Select kind" />
+          <ComboBoxContent>
+            <ComboBoxItem id="income">Income</ComboBoxItem>
+            <ComboBoxItem id="expense">Expense</ComboBoxItem>
+          </ComboBoxContent>
+        </ComboBox>
         <TextField value={description} onChange={setDescription}>
           <Label>Description</Label>
           <Input />
