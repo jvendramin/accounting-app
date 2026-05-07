@@ -1,10 +1,11 @@
 "use client"
 
 import { useState } from "react"
+import { EyeIcon, EyeSlashIcon } from "@heroicons/react/20/solid"
 import { auth } from "@/lib/auth"
 import { Button } from "@/components/ui/button"
 import { TextField } from "@/components/ui/text-field"
-import { Input } from "@/components/ui/input"
+import { Input, InputGroup } from "@/components/ui/input"
 import { Label } from "@/components/ui/field"
 import { toast } from "sonner"
 
@@ -27,6 +28,42 @@ function LField({
     <TextField value={value} onChange={onChange} isRequired type={type as any}>
       <Label>{label}</Label>
       <Input autoComplete={autoComplete} />
+    </TextField>
+  )
+}
+
+function PasswordField({
+  label,
+  value,
+  onChange,
+  autoComplete,
+}: {
+  label: string
+  value: string
+  onChange: (v: string) => void
+  autoComplete?: string
+}) {
+  const [visible, setVisible] = useState(false)
+  return (
+    <TextField
+      value={value}
+      onChange={onChange}
+      isRequired
+      type={visible ? "text" : "password"}
+    >
+      <Label>{label}</Label>
+      <InputGroup className="[--input-gutter-end:--spacing(12)]">
+        <Input autoComplete={autoComplete} />
+        <Button
+          intent="plain"
+          size="sq-sm"
+          aria-pressed={visible}
+          aria-label={visible ? "Hide password" : "Show password"}
+          onPress={() => setVisible((v) => !v)}
+        >
+          {visible ? <EyeSlashIcon /> : <EyeIcon />}
+        </Button>
+      </InputGroup>
     </TextField>
   )
 }
@@ -86,17 +123,15 @@ export function LoginForm() {
         value={email}
         onChange={setEmail}
       />
-      <LField
+      <PasswordField
         label="Password"
-        type="password"
         autoComplete={isSignIn ? "current-password" : "new-password"}
         value={password}
         onChange={setPassword}
       />
       {!isSignIn && (
-        <LField
+        <PasswordField
           label="Confirm Password"
-          type="password"
           autoComplete="new-password"
           value={confirm}
           onChange={setConfirm}
