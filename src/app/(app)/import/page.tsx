@@ -203,18 +203,18 @@ export default function ImportPage() {
       <CardHeader className="flex w-full flex-col items-stretch gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
         <CardTitle>Import transactions</CardTitle>
         <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
-          <Button intent="outline" onPress={() => setPickerOpen(true)}>
-            <IconPlus /> Choose file
-          </Button>
-          <Button intent="plain" onPress={clearAll} isDisabled={pending.length === 0}>
-            Clear
-          </Button>
-          <Button
-            onPress={importAll}
-            isPending={submitting}
-            isDisabled={pending.length === 0}
-          >
-            Import {pending.length || ""}
+          {pending.length > 0 && (
+            <>
+              <Button intent="plain" onPress={clearAll}>
+                Clear
+              </Button>
+              <Button onPress={importAll} isPending={submitting}>
+                Import {pending.length}
+              </Button>
+            </>
+          )}
+          <Button onPress={() => setPickerOpen(true)}>
+            <IconPlus /> Upload
           </Button>
         </div>
       </CardHeader>
