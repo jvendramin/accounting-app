@@ -35,6 +35,8 @@ import {
 } from "@heroicons/react/24/outline"
 import { auth } from "@/lib/auth"
 import { useTheme } from "@/components/theme-provider"
+import { SettingsModal } from "@/components/settings-modal"
+import { Cog6ToothIcon } from "@heroicons/react/24/outline"
 import {
   IconCircleQuestionmark,
   IconChartBar,
@@ -73,6 +75,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const session = auth.useSession()
   const user = session.data?.user
   const { theme, setTheme } = useTheme()
+  const [settingsOpen, setSettingsOpen] = useState(false)
   const [txCount, setTxCount] = useState<number | null>(null)
   useEffect(() => {
     fetch("/api/transactions/count_recent")
@@ -247,6 +250,11 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 {theme === "system" && <MenuShortcut>✓</MenuShortcut>}
               </MenuItem>
               <MenuSeparator />
+              <MenuItem onAction={() => setSettingsOpen(true)}>
+                <Cog6ToothIcon />
+                <MenuLabel>App settings…</MenuLabel>
+              </MenuItem>
+              <MenuSeparator />
               <MenuItem intent="danger" onAction={() => auth.signOut()}>
                 <IconLogout />
                 Sign out
@@ -266,6 +274,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           {children}
         </main>
       </SidebarInset>
+      <SettingsModal
+        isOpen={settingsOpen}
+        onClose={() => setSettingsOpen(false)}
+      />
     </SidebarProvider>
   )
 }
