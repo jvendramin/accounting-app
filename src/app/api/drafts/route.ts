@@ -14,7 +14,10 @@ export async function GET() {
     rows.map((r) => ({
       id: r.id,
       name: r.name,
-      payload: JSON.parse(r.payload),
+      // Column is jsonb in Postgres — driver already returns a parsed object,
+      // so don't double-parse. Tolerate strings just in case it ever flips.
+      payload:
+        typeof r.payload === "string" ? JSON.parse(r.payload) : r.payload,
       user_sub: r.userSub,
       updated_at: r.updatedAt,
       created_at: r.createdAt,
