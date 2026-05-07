@@ -115,7 +115,17 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     <SidebarProvider>
       <Sidebar intent="inset" collapsible="dock">
         <SidebarHeader>
-          <SidebarLabel className="font-semibold">Books</SidebarLabel>
+          <div className="flex items-center gap-2">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src="/logo.png"
+              alt=""
+              className="size-7 shrink-0"
+            />
+            <SidebarLabel className="font-semibold in-data-[collapsible=dock]:hidden">
+              Books
+            </SidebarLabel>
+          </div>
         </SidebarHeader>
         <SidebarContent>
           <SidebarSectionGroup>
