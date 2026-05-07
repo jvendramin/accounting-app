@@ -66,15 +66,13 @@ export async function PUT(
       )
     }
   }
-  // Replace tax breakdown if tax_ids provided. Deposit-only spec.
   if (t.tax_ids !== undefined) {
     await db
       .delete(transactionTaxes)
       .where(eq(transactionTaxes.transactionId, txId))
     const finalTotal =
       t.amount !== undefined ? Number(t.amount) : Number(updated.amount ?? 0)
-    const finalType = t.transaction_type ?? updated.transactionType
-    if (finalType === "deposit" && t.tax_ids.length > 0) {
+    if (t.tax_ids.length > 0) {
       const found = await db
         .select()
         .from(taxes)

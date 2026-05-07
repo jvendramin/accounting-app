@@ -538,8 +538,7 @@ export default function TransactionsPage() {
           transaction_type: simple.kind,
           amount: simple.amount,
           journal_lines_attributes: lines,
-          tax_ids:
-            simple.kind === "deposit" ? simple.tax_ids ?? [] : [],
+          tax_ids: simple.tax_ids ?? [],
         },
       }
     } else {
@@ -950,7 +949,7 @@ export default function TransactionsPage() {
                   <Label>Description</Label>
                   <Input placeholder="Write a description" />
                 </TextField>
-                {simple.kind === "deposit" && activeTaxes.length > 0 && (
+                {activeTaxes.length > 0 && (
                   <div className="grid gap-2">
                     <Label>Taxes (inclusive in total)</Label>
                     <div className="flex flex-wrap gap-2">
@@ -985,12 +984,9 @@ export default function TransactionsPage() {
                   </div>
                 )}
                 {simple.amount > 0 && (() => {
-                  const selected =
-                    simple.kind === "deposit"
-                      ? activeTaxes.filter((t) =>
-                          (simple.tax_ids ?? []).includes(t.id),
-                        )
-                      : []
+                  const selected = activeTaxes.filter((t) =>
+                    (simple.tax_ids ?? []).includes(t.id),
+                  )
                   const sumRates = selected.reduce(
                     (s, t) => s + Number(t.rate),
                     0,

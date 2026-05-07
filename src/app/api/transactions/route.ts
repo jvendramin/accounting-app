@@ -174,9 +174,6 @@ export async function POST(req: Request) {
       })),
     )
   }
-  // Tax breakdown applies to deposits only (per current spec).
-  if (body.transaction.transaction_type === "deposit") {
-    await applyTaxes(tx.id, body.transaction.amount, body.transaction.tax_ids)
-  }
+  await applyTaxes(tx.id, body.transaction.amount, body.transaction.tax_ids)
   return NextResponse.json(tx, { status: 201 })
 }
