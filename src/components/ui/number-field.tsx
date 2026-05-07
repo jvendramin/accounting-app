@@ -24,9 +24,9 @@ interface InputProps extends PrimitiveInputProps {
 
 function NumberInput({ className, leading, ...props }: InputProps) {
   return (
-    <InputGroup className="[--input-gutter-end:--spacing(20)]">
+    <InputGroup className="[--input-gutter-end:--spacing(28)] sm:[--input-gutter-end:--spacing(20)]">
       {leading}
-      <Input className={cx("tabular-nums", className)} {...props} />
+      <Input className={cx("tabular-nums pe-3 sm:pe-2", className)} {...props} />
       <div
         data-slot="text"
         className="in-disabled:pointer-events-none pointer-events-auto end-0 p-px in-disabled:opacity-50"

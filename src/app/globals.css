@@ -312,6 +312,15 @@ tr[data-row]:has(:not(td:has(input))) {
   animation: shimmer var(--shimmer-duration, 4s) linear infinite;
 }
 
+/* PWA splash overlay — only painted when launched in standalone mode so
+   browser users never see it. Server-rendered hidden; the matching media
+   query reveals it before JS hydrates, eliminating the white iOS flash. */
+@media (display-mode: standalone) {
+  .pwa-splash {
+    display: flex;
+  }
+}
+
 /* Chain-of-thought collapsible animations. */
 @keyframes collapsible-down {
   from { height: 0 }

@@ -4,6 +4,7 @@ import localFont from "next/font/local";
 import { ThemeProvider, themeBootstrapScript } from "@/components/theme-provider";
 import { AriaRouterProvider } from "@/components/router-provider";
 import { ServiceWorkerRegister } from "@/components/sw-register";
+import { PwaSplash } from "@/components/pwa-splash";
 import { Toaster } from "sonner";
 
 const fontSans = localFont({
@@ -61,6 +62,7 @@ export default function RootLayout({
       </head>
       <body className={`${fontSans.variable} ${fontMono.variable} antialiased`}>
         <ThemeProvider>
+          <PwaSplash />
           <AriaRouterProvider>{children}</AriaRouterProvider>
           <Toaster richColors closeButton />
           <ServiceWorkerRegister />
