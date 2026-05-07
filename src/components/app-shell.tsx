@@ -24,17 +24,10 @@ import {
   MenuLabel,
   MenuSection,
   MenuSeparator,
-  MenuShortcut,
   MenuTrigger,
 } from "@/components/ui/menu"
 import { ChevronUpDownIcon } from "@heroicons/react/24/outline"
-import {
-  SunIcon,
-  MoonIcon,
-  ComputerDesktopIcon,
-} from "@heroicons/react/24/outline"
 import { auth } from "@/lib/auth"
-import { useTheme } from "@/components/theme-provider"
 import { SettingsModal } from "@/components/settings-modal"
 import { Cog6ToothIcon } from "@heroicons/react/24/outline"
 import {
@@ -74,7 +67,6 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const title = titles[pathname] ?? "Books"
   const session = auth.useSession()
   const user = session.data?.user
-  const { theme, setTheme } = useTheme()
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [txCount, setTxCount] = useState<number | null>(null)
   useEffect(() => {
@@ -234,25 +226,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                   </MenuHeader>
                 </MenuSection>
               )}
-              <MenuItem onAction={() => setTheme("light")}>
-                <SunIcon />
-                <MenuLabel>Light</MenuLabel>
-                {theme === "light" && <MenuShortcut>✓</MenuShortcut>}
-              </MenuItem>
-              <MenuItem onAction={() => setTheme("dark")}>
-                <MoonIcon />
-                <MenuLabel>Dark</MenuLabel>
-                {theme === "dark" && <MenuShortcut>✓</MenuShortcut>}
-              </MenuItem>
-              <MenuItem onAction={() => setTheme("system")}>
-                <ComputerDesktopIcon />
-                <MenuLabel>System</MenuLabel>
-                {theme === "system" && <MenuShortcut>✓</MenuShortcut>}
-              </MenuItem>
-              <MenuSeparator />
               <MenuItem onAction={() => setSettingsOpen(true)}>
                 <Cog6ToothIcon />
-                <MenuLabel>App settings…</MenuLabel>
+                <MenuLabel>Settings</MenuLabel>
               </MenuItem>
               <MenuSeparator />
               <MenuItem intent="danger" onAction={() => auth.signOut()}>
