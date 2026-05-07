@@ -3,7 +3,13 @@
 import { createClient } from "@neondatabase/neon-js"
 import { BetterAuthReactAdapter } from "@neondatabase/neon-js/auth/react/adapters"
 
-const authUrl = process.env.NEXT_PUBLIC_NEON_AUTH_URL
+// Prefer the same-origin proxy at /api/auth so PWA / standalone clients
+// never have to deal with cross-origin cookies. NEXT_PUBLIC_NEON_AUTH_URL
+// stays as a fallback for environments where the proxy isn't deployed.
+const authUrl =
+  typeof window !== "undefined"
+    ? `${window.location.origin}/api/auth`
+    : process.env.NEXT_PUBLIC_NEON_AUTH_URL
 
 // Lazy init: createClient + BetterAuthReactAdapter touch browser-only globals
 // (window, localStorage). Next.js still server-renders this module for the
