@@ -11,6 +11,8 @@ import {
   SelectItem,
   SelectTrigger,
 } from "@/components/ui/select"
+import { DatePicker, DatePickerTrigger } from "@/components/ui/date-picker"
+import { parseDate } from "@internationalized/date"
 import {
   ModalBody,
   ModalContent,
@@ -297,10 +299,13 @@ function TxnForm({
       </ModalHeader>
       <ModalBody className="grid gap-4">
         <div className="grid gap-4 sm:grid-cols-2">
-          <TextField value={date} onChange={setDate}>
+          <DatePicker
+            value={date ? parseDate(date) : null}
+            onChange={(d) => setDate(d ? d.toString() : "")}
+          >
             <Label>Date</Label>
-            <Input type="date" />
-          </TextField>
+            <DatePickerTrigger />
+          </DatePicker>
           <TextField value={reference} onChange={setReference}>
             <Label>Reference</Label>
             <Input placeholder="Optional" />
