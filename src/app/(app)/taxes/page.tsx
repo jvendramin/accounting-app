@@ -36,6 +36,7 @@ import { IconPlus } from "@/components/icons"
 import { toast } from "sonner"
 import { BulkActionsBar, selectedIds } from "@/components/bulk-actions-bar"
 import { NumberField, NumberInput } from "@/components/ui/number-field"
+import { Switch } from "@/components/ui/switch"
 import type { Selection } from "react-aria-components"
 
 type Tax = {
@@ -309,6 +310,18 @@ export default function TaxesPage() {
             <Label>Description</Label>
             <Input />
           </TextField>
+          <div className="flex items-center justify-between rounded-md border px-3 py-2">
+            <div>
+              <div className="text-sm font-medium">Active</div>
+              <div className="text-xs text-muted-fg">
+                Inactive taxes are hidden from the transaction picker.
+              </div>
+            </div>
+            <Switch
+              isSelected={editing?.is_active ?? true}
+              onChange={(v) => setEditing({ ...editing!, is_active: v })}
+            />
+          </div>
         </ModalBody>
         <ModalFooter className="pt-4 sm:pt-3">
           <Button intent="outline" onPress={() => setOpen(false)} className="hidden sm:inline-flex">
