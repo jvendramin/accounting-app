@@ -259,7 +259,7 @@ export default function DashboardPage() {
                 <GridListItem
                   id={s.id}
                   textValue={s.description}
-                  className="!flex-col !items-stretch !gap-2 sm:!flex-row sm:!items-center sm:!gap-2.5"
+                  className="relative !flex-col !items-stretch !gap-2 [&>[slot=selection]]:absolute [&>[slot=selection]]:end-3 [&>[slot=selection]]:top-3 [&>[slot=selection]]:z-10 sm:!flex-row sm:!items-center sm:!gap-2.5 sm:[&>[slot=selection]]:static"
                 >
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2">
