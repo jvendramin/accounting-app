@@ -538,9 +538,8 @@ export default function TransactionsPage() {
           transaction_type: simple.kind,
           amount: simple.amount,
           journal_lines_attributes: lines,
-          ...(simple.kind === "deposit" && simple.tax_ids?.length
-            ? { tax_ids: simple.tax_ids }
-            : {}),
+          tax_ids:
+            simple.kind === "deposit" ? simple.tax_ids ?? [] : [],
         },
       }
     } else {
