@@ -59,7 +59,13 @@ async function forward(req: Request, slug: string[]) {
   // app's own origin instead of Neon's subdomain.
   const outHeaders = new Headers()
   res.headers.forEach((value, key) => {
-    if (key.toLowerCase() === "set-cookie") {
+    const k = key.toLowerCase()
+    // Node fetch auto-decompresses the body, so the original
+    // content-encoding/content-length no longer match what we forward.
+    // Letting the browser see them causes a "decoding failed" error and the
+    // app can't read the response.
+    if (k === "content-encoding" || k === "content-length") return
+    if (k === "set-cookie") {
       const cleaned = value
         .replace(/;\s*Domain=[^;]+/i, "")
         .replace(/;\s*SameSite=None/i, "; SameSite=Lax")
