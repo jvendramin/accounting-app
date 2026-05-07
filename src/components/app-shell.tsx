@@ -238,32 +238,33 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 <Cog6ToothIcon />
                 <MenuLabel>Settings</MenuLabel>
               </MenuItem>
-              <div
-                role="presentation"
-                className="px-2 py-1.5"
-                onKeyDownCapture={(e) => e.stopPropagation()}
-              >
-                <ToggleGroup
-                  size="sm"
-                  selectedKeys={new Set([theme ?? "system"])}
-                  onSelectionChange={(keys) => {
-                    const k = [...keys][0]
-                    if (k) setTheme(k as "light" | "dark" | "system")
-                  }}
-                  className="w-full *:[button]:flex-1"
-                  aria-label="Theme"
+              <MenuSection>
+                <MenuHeader
+                  className="col-span-full px-2 py-1.5 font-normal"
+                  onKeyDownCapture={(e) => e.stopPropagation()}
                 >
-                  <ToggleGroupItem id="light" aria-label="Light">
-                    <SunIcon />
-                  </ToggleGroupItem>
-                  <ToggleGroupItem id="dark" aria-label="Dark">
-                    <MoonIcon />
-                  </ToggleGroupItem>
-                  <ToggleGroupItem id="system" aria-label="System">
-                    <ComputerDesktopIcon />
-                  </ToggleGroupItem>
-                </ToggleGroup>
-              </div>
+                  <ToggleGroup
+                    size="sm"
+                    selectedKeys={new Set([theme ?? "system"])}
+                    onSelectionChange={(keys) => {
+                      const k = [...keys][0]
+                      if (k) setTheme(k as "light" | "dark" | "system")
+                    }}
+                    className="w-full *:[button]:flex-1"
+                    aria-label="Theme"
+                  >
+                    <ToggleGroupItem id="light" aria-label="Light">
+                      <SunIcon />
+                    </ToggleGroupItem>
+                    <ToggleGroupItem id="dark" aria-label="Dark">
+                      <MoonIcon />
+                    </ToggleGroupItem>
+                    <ToggleGroupItem id="system" aria-label="System">
+                      <ComputerDesktopIcon />
+                    </ToggleGroupItem>
+                  </ToggleGroup>
+                </MenuHeader>
+              </MenuSection>
               <MenuSeparator />
               <MenuItem intent="danger" onAction={() => auth.signOut()}>
                 <IconLogout />
