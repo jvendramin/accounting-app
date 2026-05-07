@@ -655,11 +655,15 @@ export default function TransactionsPage() {
                 {showFilters ? "Hide" : "Filters"}
               </Button>
               <ButtonGroup>
-                <Button intent="secondary" size="sm" onPress={newTxn}>
+                <Button size="sm" onPress={newTxn}>
                   <IconPlus /> New
                 </Button>
                 <Menu>
-                  <Button intent="secondary" size="sm" aria-label="More">
+                  <Button
+                    size="sm"
+                    aria-label="More"
+                    className="!border-l !border-l-primary-fg/25"
+                  >
                     <EllipsisHorizontalIcon />
                   </Button>
                   <MenuContent placement="bottom end">
@@ -738,11 +742,14 @@ export default function TransactionsPage() {
               )}
             </div>
             <ButtonGroup className="hidden sm:inline-flex">
-              <Button intent="secondary" onPress={newTxn}>
+              <Button onPress={newTxn}>
                 <IconPlus /> New
               </Button>
               <Menu>
-                <Button intent="secondary" aria-label="More">
+                <Button
+                  aria-label="More"
+                  className="!border-l !border-l-primary-fg/25"
+                >
                   <EllipsisHorizontalIcon />
                 </Button>
                 <MenuContent placement="bottom end">
