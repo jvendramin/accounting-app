@@ -181,7 +181,7 @@ export function SettingsModal({
           </TabList>
           <TabPanels>
             <TabPanel id="personal" className="pt-4 w-full">
-              <div className="grid gap-4 w-full sm:grid-cols-2">
+              <div className="grid gap-4 w-full md:grid-cols-2">
                 <TextField
                   value={prefs.personal.display_name ?? ""}
                   onChange={(v) => set.personal("display_name", v)}
@@ -196,7 +196,7 @@ export function SettingsModal({
                 <TextField
                   value={prefs.personal.avatar_url ?? ""}
                   onChange={(v) => set.personal("avatar_url", v)}
-                  className="sm:col-span-2"
+                  className="md:col-span-2"
                 >
                   <Label>Avatar URL</Label>
                   <Input placeholder="https://…" />
@@ -256,7 +256,7 @@ export function SettingsModal({
             </TabPanel>
 
             <TabPanel id="business" className="pt-4 w-full">
-              <div className="grid gap-4 w-full sm:grid-cols-2">
+              <div className="grid gap-4 w-full md:grid-cols-2">
                 <TextField
                   value={prefs.business.business_name ?? ""}
                   onChange={(v) => set.business("business_name", v)}
@@ -298,7 +298,7 @@ export function SettingsModal({
                 <TextField
                   value={prefs.business.address_line1 ?? ""}
                   onChange={(v) => set.business("address_line1", v)}
-                  className="sm:col-span-2"
+                  className="md:col-span-2"
                 >
                   <Label>Address line 1</Label>
                   <Input />
@@ -306,7 +306,7 @@ export function SettingsModal({
                 <TextField
                   value={prefs.business.address_line2 ?? ""}
                   onChange={(v) => set.business("address_line2", v)}
-                  className="sm:col-span-2"
+                  className="md:col-span-2"
                 >
                   <Label>Address line 2</Label>
                   <Input />
@@ -366,7 +366,7 @@ export function SettingsModal({
                 <TextField
                   value={prefs.business.website ?? ""}
                   onChange={(v) => set.business("website", v)}
-                  className="sm:col-span-2"
+                  className="md:col-span-2"
                 >
                   <Label>Website</Label>
                   <Input placeholder="https://…" />
@@ -395,7 +395,7 @@ export function SettingsModal({
             </TabPanel>
 
             <TabPanel id="app" className="pt-4 w-full">
-              <div className="grid gap-4 w-full sm:grid-cols-2">
+              <div className="grid gap-4 w-full md:grid-cols-2">
                 <ComboBox
                   aria-label="Theme"
                   selectedKey={prefs.app.theme ?? theme ?? null}
@@ -474,7 +474,7 @@ export function SettingsModal({
                     <ComboBoxItem id="withdrawal">Withdrawal</ComboBoxItem>
                   </ComboBoxContent>
                 </ComboBox>
-                <div className="flex items-center justify-between sm:col-span-2 rounded-md border px-3 py-2">
+                <div className="flex items-center justify-between md:col-span-2 rounded-md border px-3 py-2">
                   <div>
                     <div className="text-sm font-medium">
                       Show transaction suggestions
