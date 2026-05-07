@@ -27,6 +27,22 @@ async function forward(req: Request, slug: string[]) {
   fwdHeaders.delete("host")
   fwdHeaders.delete("content-length")
   fwdHeaders.delete("connection")
+  // Cookies in the browser are scoped to our Vercel host, NOT to Neon's
+  // subdomain. Forwarding them upstream confuses Better Auth (returns 400).
+  // Better Auth's React adapter uses Bearer tokens (Authorization header),
+  // so dropping Cookie is safe and required.
+  fwdHeaders.delete("cookie")
+  // Same reason for Referer — upstream may reject when it doesn't match its
+  // own host.
+  fwdHeaders.delete("referer")
+  // Vercel injects x-forwarded-* and x-vercel-* on every server request.
+  // Better Auth uses x-forwarded-host to derive its trusted host and rejects
+  // (HTTP 400) when it sees our Vercel hostname. Drop the whole family.
+  for (const name of [...fwdHeaders.keys()]) {
+    if (name.startsWith("x-forwarded-") || name.startsWith("x-vercel-")) {
+      fwdHeaders.delete(name)
+    }
+  }
 
   const init: RequestInit = {
     method: req.method,
