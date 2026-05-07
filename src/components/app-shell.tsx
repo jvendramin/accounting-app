@@ -234,9 +234,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                   </MenuHeader>
                 </MenuSection>
               )}
-              <MenuSection>
+              <MenuSection className="mt-0">
                 <MenuHeader
-                  className="col-span-full px-2 py-1.5 font-normal"
+                  className="col-span-full px-1 py-1 font-normal"
                   onKeyDownCapture={(e) => e.stopPropagation()}
                 >
                   <ToggleGroup
