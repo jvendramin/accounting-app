@@ -330,11 +330,38 @@ export default function TransactionsPage() {
   // ---- Autosave to localStorage ----
   const DRAFT_KEY = "tx-modal-draft"
   const snapshotForm = () => ({ tab, simple, journal, editingId })
-  const loadSnapshot = (s: ReturnType<typeof snapshotForm>) => {
-    setTab(s.tab)
-    setSimple(s.simple)
-    setJournal(s.journal)
+  const loadSnapshot = (s: any) => {
+    if (!s || typeof s !== "object") {
+      toast.error("This draft is malformed and can't be resumed")
+      return false
+    }
+    const emptySimple: SimpleForm = {
+      date: today(),
+      description: "",
+      reference: "",
+      kind: "deposit",
+      amount: 0,
+    }
+    const emptyJournal: JournalForm = {
+      date: today(),
+      description: "",
+      reference: "",
+      lines: [
+        { account_id: undefined, debit: 0, credit: 0, memo: "" },
+        { account_id: undefined, debit: 0, credit: 0, memo: "" },
+      ],
+    }
+    setTab(s.tab === "journal" ? "journal" : "simple")
+    setSimple({ ...emptySimple, ...(s.simple || {}) })
+    setJournal({
+      ...emptyJournal,
+      ...(s.journal || {}),
+      lines: Array.isArray(s.journal?.lines) && s.journal.lines.length > 0
+        ? s.journal.lines
+        : emptyJournal.lines,
+    })
     setEditingId(s.editingId ?? null)
+    return true
   }
   const hasDraftInStorage = () => {
     if (typeof window === "undefined") return false
@@ -1214,9 +1241,10 @@ export default function TransactionsPage() {
                     size="sm"
                     onPress={() => {
                       try {
-                        loadSnapshot(d.payload)
-                        setDraftsOpen(false)
-                        setOpen(true)
+                        if (loadSnapshot(d.payload)) {
+                          setDraftsOpen(false)
+                          setOpen(true)
+                        }
                       } catch {
                         toast.error("Couldn't load this draft")
                       }
