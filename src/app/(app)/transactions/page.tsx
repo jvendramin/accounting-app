@@ -12,6 +12,9 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import { Button } from "@/components/ui/button"
+import { ButtonGroup } from "@/components/ui/button-group"
+import { EllipsisHorizontalIcon } from "@heroicons/react/16/solid"
+import { DocumentTextIcon } from "@heroicons/react/24/outline"
 import { SearchField, SearchInput } from "@/components/ui/search-field"
 import { TextField } from "@/components/ui/text-field"
 import { Input } from "@/components/ui/input"
@@ -651,21 +654,27 @@ export default function TransactionsPage() {
               >
                 {showFilters ? "Hide" : "Filters"}
               </Button>
-              {drafts.length > 0 && (
-                <Button
-                  intent="outline"
-                  size="sm"
-                  onPress={() => {
-                    reloadDrafts()
-                    setDraftsOpen(true)
-                  }}
-                >
-                  Drafts ({drafts.length})
+              <ButtonGroup>
+                <Button size="sm" onPress={newTxn}>
+                  <IconPlus /> New
                 </Button>
-              )}
-              <Button size="sm" onPress={newTxn}>
-                <IconPlus />
-              </Button>
+                <MenuTrigger>
+                  <Button size="sm" aria-label="More">
+                    <EllipsisHorizontalIcon />
+                  </Button>
+                  <MenuContent placement="bottom end">
+                    <MenuItem
+                      onAction={() => {
+                        reloadDrafts()
+                        setDraftsOpen(true)
+                      }}
+                    >
+                      <DocumentTextIcon />
+                      Drafts {drafts.length > 0 ? `(${drafts.length})` : ""}
+                    </MenuItem>
+                  </MenuContent>
+                </MenuTrigger>
+              </ButtonGroup>
             </div>
           </div>
           <div
@@ -728,19 +737,27 @@ export default function TransactionsPage() {
                 </Button>
               )}
             </div>
-            <Button
-              intent="outline"
-              onPress={() => {
-                reloadDrafts()
-                setDraftsOpen(true)
-              }}
-              className="hidden sm:inline-flex"
-            >
-              Drafts {drafts.length > 0 ? `(${drafts.length})` : ""}
-            </Button>
-            <Button onPress={newTxn} className="hidden sm:inline-flex">
-              <IconPlus /> New
-            </Button>
+            <ButtonGroup className="hidden sm:inline-flex">
+              <Button onPress={newTxn}>
+                <IconPlus /> New
+              </Button>
+              <MenuTrigger>
+                <Button aria-label="More">
+                  <EllipsisHorizontalIcon />
+                </Button>
+                <MenuContent placement="bottom end">
+                  <MenuItem
+                    onAction={() => {
+                      reloadDrafts()
+                      setDraftsOpen(true)
+                    }}
+                  >
+                    <DocumentTextIcon />
+                    Drafts {drafts.length > 0 ? `(${drafts.length})` : ""}
+                  </MenuItem>
+                </MenuContent>
+              </MenuTrigger>
+            </ButtonGroup>
           </div>
         </CardHeader>
         <CardContent
