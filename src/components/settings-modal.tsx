@@ -9,11 +9,11 @@ import { Switch } from "@/components/ui/switch"
 import { NumberField, NumberInput } from "@/components/ui/number-field"
 import { Tab, TabList, TabPanel, TabPanels, Tabs } from "@/components/ui/tabs"
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-} from "@/components/ui/select"
+  ComboBox,
+  ComboBoxContent,
+  ComboBoxInput,
+  ComboBoxItem,
+} from "@/components/ui/combo-box"
 import {
   ModalBody,
   ModalContent,
@@ -201,61 +201,57 @@ export function SettingsModal({
                   <Label>Avatar URL</Label>
                   <Input placeholder="https://…" />
                 </TextField>
-                <div className="grid gap-1.5">
+                <ComboBox
+                  aria-label="Timezone"
+                  selectedKey={prefs.personal.timezone ?? null}
+                  onSelectionChange={(k) =>
+                    set.personal("timezone", k == null ? "" : String(k))
+                  }
+                >
                   <Label>Timezone</Label>
-                  <Select
-                    aria-label="Timezone"
-                    selectedKey={prefs.personal.timezone ?? ""}
-                    onSelectionChange={(k) =>
-                      set.personal("timezone", String(k))
-                    }
-                  >
-                    <SelectTrigger />
-                    <SelectContent>
-                      {TIMEZONES.map((t) => (
-                        <SelectItem key={t} id={t}>
-                          {t}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="grid gap-1.5">
+                  <ComboBoxInput placeholder="Select timezone" />
+                  <ComboBoxContent>
+                    {TIMEZONES.map((t) => (
+                      <ComboBoxItem key={t} id={t}>
+                        {t}
+                      </ComboBoxItem>
+                    ))}
+                  </ComboBoxContent>
+                </ComboBox>
+                <ComboBox
+                  aria-label="Locale"
+                  selectedKey={prefs.personal.locale ?? null}
+                  onSelectionChange={(k) =>
+                    set.personal("locale", k == null ? "" : String(k))
+                  }
+                >
                   <Label>Locale</Label>
-                  <Select
-                    aria-label="Locale"
-                    selectedKey={prefs.personal.locale ?? ""}
-                    onSelectionChange={(k) => set.personal("locale", String(k))}
-                  >
-                    <SelectTrigger />
-                    <SelectContent>
-                      {LOCALES.map((t) => (
-                        <SelectItem key={t} id={t}>
-                          {t}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="grid gap-1.5">
+                  <ComboBoxInput placeholder="Select locale" />
+                  <ComboBoxContent>
+                    {LOCALES.map((t) => (
+                      <ComboBoxItem key={t} id={t}>
+                        {t}
+                      </ComboBoxItem>
+                    ))}
+                  </ComboBoxContent>
+                </ComboBox>
+                <ComboBox
+                  aria-label="Date format"
+                  selectedKey={prefs.personal.date_format ?? null}
+                  onSelectionChange={(k) =>
+                    set.personal("date_format", k == null ? "" : String(k))
+                  }
+                >
                   <Label>Date format</Label>
-                  <Select
-                    aria-label="Date format"
-                    selectedKey={prefs.personal.date_format ?? ""}
-                    onSelectionChange={(k) =>
-                      set.personal("date_format", String(k))
-                    }
-                  >
-                    <SelectTrigger />
-                    <SelectContent>
-                      {DATE_FORMATS.map((t) => (
-                        <SelectItem key={t} id={t}>
-                          {t}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
+                  <ComboBoxInput placeholder="Select date format" />
+                  <ComboBoxContent>
+                    {DATE_FORMATS.map((t) => (
+                      <ComboBoxItem key={t} id={t}>
+                        {t}
+                      </ComboBoxItem>
+                    ))}
+                  </ComboBoxContent>
+                </ComboBox>
               </div>
             </TabPanel>
 
@@ -282,25 +278,23 @@ export function SettingsModal({
                   <Label>Tax ID</Label>
                   <Input placeholder="EIN / GST / VAT" />
                 </TextField>
-                <div className="grid gap-1.5">
+                <ComboBox
+                  aria-label="Currency"
+                  selectedKey={prefs.business.currency ?? null}
+                  onSelectionChange={(k) =>
+                    set.business("currency", k == null ? "" : String(k))
+                  }
+                >
                   <Label>Currency</Label>
-                  <Select
-                    aria-label="Currency"
-                    selectedKey={prefs.business.currency ?? ""}
-                    onSelectionChange={(k) =>
-                      set.business("currency", String(k))
-                    }
-                  >
-                    <SelectTrigger />
-                    <SelectContent>
-                      {CURRENCIES.map((t) => (
-                        <SelectItem key={t} id={t}>
-                          {t}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
+                  <ComboBoxInput placeholder="Select currency" />
+                  <ComboBoxContent>
+                    {CURRENCIES.map((t) => (
+                      <ComboBoxItem key={t} id={t}>
+                        {t}
+                      </ComboBoxItem>
+                    ))}
+                  </ComboBoxContent>
+                </ComboBox>
                 <TextField
                   value={prefs.business.address_line1 ?? ""}
                   onChange={(v) => set.business("address_line1", v)}
@@ -338,25 +332,23 @@ export function SettingsModal({
                   <Label>Postal code</Label>
                   <Input />
                 </TextField>
-                <div className="grid gap-1.5">
+                <ComboBox
+                  aria-label="Country"
+                  selectedKey={prefs.business.country ?? null}
+                  onSelectionChange={(k) =>
+                    set.business("country", k == null ? "" : String(k))
+                  }
+                >
                   <Label>Country</Label>
-                  <Select
-                    aria-label="Country"
-                    selectedKey={prefs.business.country ?? ""}
-                    onSelectionChange={(k) =>
-                      set.business("country", String(k))
-                    }
-                  >
-                    <SelectTrigger />
-                    <SelectContent>
-                      {COUNTRIES.map((t) => (
-                        <SelectItem key={t} id={t}>
-                          {t}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
+                  <ComboBoxInput placeholder="Select country" />
+                  <ComboBoxContent>
+                    {COUNTRIES.map((t) => (
+                      <ComboBoxItem key={t} id={t}>
+                        {t}
+                      </ComboBoxItem>
+                    ))}
+                  </ComboBoxContent>
+                </ComboBox>
                 <TextField
                   value={prefs.business.phone ?? ""}
                   onChange={(v) => set.business("phone", v)}
@@ -379,85 +371,79 @@ export function SettingsModal({
                   <Label>Website</Label>
                   <Input placeholder="https://…" />
                 </TextField>
-                <div className="grid gap-1.5">
+                <ComboBox
+                  aria-label="Fiscal year start month"
+                  selectedKey={prefs.business.fiscal_year_start_month ?? null}
+                  onSelectionChange={(k) =>
+                    set.business(
+                      "fiscal_year_start_month",
+                      k == null ? "" : String(k),
+                    )
+                  }
+                >
                   <Label>Fiscal year starts</Label>
-                  <Select
-                    aria-label="Fiscal year start month"
-                    selectedKey={prefs.business.fiscal_year_start_month ?? ""}
-                    onSelectionChange={(k) =>
-                      set.business("fiscal_year_start_month", String(k))
-                    }
-                  >
-                    <SelectTrigger />
-                    <SelectContent>
-                      {MONTHS.map(([id, label]) => (
-                        <SelectItem key={id} id={id}>
-                          {label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
+                  <ComboBoxInput placeholder="Select month" />
+                  <ComboBoxContent>
+                    {MONTHS.map(([id, label]) => (
+                      <ComboBoxItem key={id} id={id} textValue={label}>
+                        {label}
+                      </ComboBoxItem>
+                    ))}
+                  </ComboBoxContent>
+                </ComboBox>
               </div>
             </TabPanel>
 
             <TabPanel id="app" className="pt-4 w-full">
               <div className="grid gap-4 w-full sm:grid-cols-2">
-                <div className="grid gap-1.5">
+                <ComboBox
+                  aria-label="Theme"
+                  selectedKey={prefs.app.theme ?? theme ?? null}
+                  onSelectionChange={(k) =>
+                    k && set.app("theme", k as "light" | "dark" | "system")
+                  }
+                >
                   <Label>Theme</Label>
-                  <Select
-                    aria-label="Theme"
-                    selectedKey={prefs.app.theme ?? theme}
-                    onSelectionChange={(k) =>
-                      set.app("theme", k as "light" | "dark" | "system")
-                    }
-                  >
-                    <SelectTrigger />
-                    <SelectContent>
-                      <SelectItem id="light">Light</SelectItem>
-                      <SelectItem id="dark">Dark</SelectItem>
-                      <SelectItem id="system">System</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="grid gap-1.5">
+                  <ComboBoxInput placeholder="Select theme" />
+                  <ComboBoxContent>
+                    <ComboBoxItem id="light">Light</ComboBoxItem>
+                    <ComboBoxItem id="dark">Dark</ComboBoxItem>
+                    <ComboBoxItem id="system">System</ComboBoxItem>
+                  </ComboBoxContent>
+                </ComboBox>
+                <ComboBox
+                  aria-label="Default dashboard tab"
+                  selectedKey={prefs.app.default_dashboard_tab ?? "overview"}
+                  onSelectionChange={(k) =>
+                    k &&
+                    set.app(
+                      "default_dashboard_tab",
+                      k as "overview" | "suggestions",
+                    )
+                  }
+                >
                   <Label>Default dashboard tab</Label>
-                  <Select
-                    aria-label="Default dashboard tab"
-                    selectedKey={prefs.app.default_dashboard_tab ?? "overview"}
-                    onSelectionChange={(k) =>
-                      set.app(
-                        "default_dashboard_tab",
-                        k as "overview" | "suggestions",
-                      )
-                    }
-                  >
-                    <SelectTrigger />
-                    <SelectContent>
-                      <SelectItem id="overview">Overview</SelectItem>
-                      <SelectItem id="suggestions">Suggestions</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="grid gap-1.5">
+                  <ComboBoxInput placeholder="Select tab" />
+                  <ComboBoxContent>
+                    <ComboBoxItem id="overview">Overview</ComboBoxItem>
+                    <ComboBoxItem id="suggestions">Suggestions</ComboBoxItem>
+                  </ComboBoxContent>
+                </ComboBox>
+                <ComboBox
+                  aria-label="Table density"
+                  selectedKey={prefs.app.table_density ?? "comfortable"}
+                  onSelectionChange={(k) =>
+                    k &&
+                    set.app("table_density", k as "comfortable" | "compact")
+                  }
+                >
                   <Label>Table density</Label>
-                  <Select
-                    aria-label="Table density"
-                    selectedKey={prefs.app.table_density ?? "comfortable"}
-                    onSelectionChange={(k) =>
-                      set.app(
-                        "table_density",
-                        k as "comfortable" | "compact",
-                      )
-                    }
-                  >
-                    <SelectTrigger />
-                    <SelectContent>
-                      <SelectItem id="comfortable">Comfortable</SelectItem>
-                      <SelectItem id="compact">Compact</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
+                  <ComboBoxInput placeholder="Select density" />
+                  <ComboBoxContent>
+                    <ComboBoxItem id="comfortable">Comfortable</ComboBoxItem>
+                    <ComboBoxItem id="compact">Compact</ComboBoxItem>
+                  </ComboBoxContent>
+                </ComboBox>
                 <NumberField
                   value={Number(prefs.app.items_per_page ?? 50)}
                   onChange={(v) =>
@@ -473,25 +459,21 @@ export function SettingsModal({
                   <Label>Rows per page</Label>
                   <NumberInput />
                 </NumberField>
-                <div className="grid gap-1.5">
+                <ComboBox
+                  aria-label="Default new transaction type"
+                  selectedKey={prefs.app.default_tx_type ?? "withdrawal"}
+                  onSelectionChange={(k) =>
+                    k &&
+                    set.app("default_tx_type", k as "deposit" | "withdrawal")
+                  }
+                >
                   <Label>Default new transaction type</Label>
-                  <Select
-                    aria-label="Default new transaction type"
-                    selectedKey={prefs.app.default_tx_type ?? "withdrawal"}
-                    onSelectionChange={(k) =>
-                      set.app(
-                        "default_tx_type",
-                        k as "deposit" | "withdrawal",
-                      )
-                    }
-                  >
-                    <SelectTrigger />
-                    <SelectContent>
-                      <SelectItem id="deposit">Deposit</SelectItem>
-                      <SelectItem id="withdrawal">Withdrawal</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
+                  <ComboBoxInput placeholder="Select type" />
+                  <ComboBoxContent>
+                    <ComboBoxItem id="deposit">Deposit</ComboBoxItem>
+                    <ComboBoxItem id="withdrawal">Withdrawal</ComboBoxItem>
+                  </ComboBoxContent>
+                </ComboBox>
                 <div className="flex items-center justify-between sm:col-span-2 rounded-md border px-3 py-2">
                   <div>
                     <div className="text-sm font-medium">

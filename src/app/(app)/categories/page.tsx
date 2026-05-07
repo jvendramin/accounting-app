@@ -17,11 +17,11 @@ import { TextField } from "@/components/ui/text-field"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/field"
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-} from "@/components/ui/select"
+  ComboBox,
+  ComboBoxContent,
+  ComboBoxInput,
+  ComboBoxItem,
+} from "@/components/ui/combo-box"
 import {
   ModalBody,
   ModalContent,
@@ -200,22 +200,22 @@ export default function CategoriesPage() {
             >
               <SearchInput placeholder="Search..." />
             </SearchField>
-            <Select
+            <ComboBox
               aria-label="Kind"
               selectedKey={kind}
-              onSelectionChange={(k) => setKind(String(k))}
+              onSelectionChange={(k) => setKind(k == null ? "all" : String(k))}
               className="w-full sm:w-[160px]"
             >
-              <SelectTrigger />
-              <SelectContent>
-                <SelectItem id="all">All</SelectItem>
+              <ComboBoxInput placeholder="All" />
+              <ComboBoxContent>
+                <ComboBoxItem id="all">All</ComboBoxItem>
                 {KINDS.map((k) => (
-                  <SelectItem key={k} id={k}>
+                  <ComboBoxItem key={k} id={k} textValue={titleCase(k)}>
                     {titleCase(k)}
-                  </SelectItem>
+                  </ComboBoxItem>
                 ))}
-              </SelectContent>
-            </Select>
+              </ComboBoxContent>
+            </ComboBox>
             <Button
               onPress={() => {
                 setEditing({ kind: "expense" })
@@ -329,25 +329,23 @@ export default function CategoriesPage() {
             <Label>Name</Label>
             <Input />
           </TextField>
-          <div className="grid gap-1.5">
+          <ComboBox
+            aria-label="Kind"
+            selectedKey={editing?.kind ?? null}
+            onSelectionChange={(k) =>
+              k && setEditing({ ...editing!, kind: k as Category["kind"] })
+            }
+          >
             <Label>Kind</Label>
-            <Select
-              aria-label="Kind"
-              selectedKey={editing?.kind}
-              onSelectionChange={(k) =>
-                setEditing({ ...editing!, kind: k as Category["kind"] })
-              }
-            >
-              <SelectTrigger />
-              <SelectContent>
-                {KINDS.map((k) => (
-                  <SelectItem key={k} id={k}>
-                    {titleCase(k)}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+            <ComboBoxInput placeholder="Select kind" />
+            <ComboBoxContent>
+              {KINDS.map((k) => (
+                <ComboBoxItem key={k} id={k} textValue={titleCase(k)}>
+                  {titleCase(k)}
+                </ComboBoxItem>
+              ))}
+            </ComboBoxContent>
+          </ComboBox>
           <TextField
             value={editing?.description ?? ""}
             onChange={(v) => setEditing({ ...editing!, description: v })}

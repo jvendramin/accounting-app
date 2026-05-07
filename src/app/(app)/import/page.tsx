@@ -23,11 +23,11 @@ import "filepond/dist/filepond.min.css"
 import "@/styles/filepond.css"
 registerPlugin(FilePondPluginFileValidateType)
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-} from "@/components/ui/select"
+  ComboBox,
+  ComboBoxContent,
+  ComboBoxInput,
+  ComboBoxItem,
+} from "@/components/ui/combo-box"
 import { Badge } from "@/components/ui/badge"
 import { IconPlus, IconTrash } from "@/components/icons"
 import { toast } from "sonner"
@@ -261,45 +261,54 @@ export default function ImportPage() {
                   {fmtMoney(p.amount)}
                 </TableCell>
                 <TableCell>
-                  <Select
+                  <ComboBox
                     aria-label="Account"
-                    selectedKey={p.account_id ? String(p.account_id) : undefined}
+                    selectedKey={p.account_id ?? null}
                     onSelectionChange={(k) =>
-                      update(p.id, { account_id: Number(k) })
+                      update(p.id, {
+                        account_id: k == null ? undefined : Number(k),
+                      })
                     }
                   >
-                    <SelectTrigger />
-                    <SelectContent>
-                      {cashAccounts.map((a) => (
-                        <SelectItem key={a.id} id={String(a.id)}>
+                    <ComboBoxInput placeholder="Select" />
+                    <ComboBoxContent items={cashAccounts}>
+                      {(a) => (
+                        <ComboBoxItem
+                          id={a.id}
+                          textValue={`${a.code} — ${a.name}`}
+                        >
                           {`${a.code} — ${a.name}`}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                        </ComboBoxItem>
+                      )}
+                    </ComboBoxContent>
+                  </ComboBox>
                 </TableCell>
                 <TableCell>
-                  <Select
+                  <ComboBox
                     aria-label="Category"
-                    selectedKey={
-                      p.category_id ? String(p.category_id) : undefined
-                    }
+                    selectedKey={p.category_id ?? null}
                     onSelectionChange={(k) =>
-                      update(p.id, { category_id: Number(k) })
+                      update(p.id, {
+                        category_id: k == null ? undefined : Number(k),
+                      })
                     }
                   >
-                    <SelectTrigger />
-                    <SelectContent>
-                      {(p.kind === "deposit"
-                        ? incomeAccounts
-                        : expenseAccounts
-                      ).map((a) => (
-                        <SelectItem key={a.id} id={String(a.id)}>
+                    <ComboBoxInput placeholder="Select" />
+                    <ComboBoxContent
+                      items={
+                        p.kind === "deposit" ? incomeAccounts : expenseAccounts
+                      }
+                    >
+                      {(a) => (
+                        <ComboBoxItem
+                          id={a.id}
+                          textValue={`${a.code} — ${a.name}`}
+                        >
                           {`${a.code} — ${a.name}`}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                        </ComboBoxItem>
+                      )}
+                    </ComboBoxContent>
+                  </ComboBox>
                 </TableCell>
                 <TableCell>
                   <Button intent="plain" size="sq-sm" onPress={() => removeRow(p.id)}>

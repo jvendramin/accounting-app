@@ -17,11 +17,11 @@ import { TextField } from "@/components/ui/text-field"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/field"
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-} from "@/components/ui/select"
+  ComboBox,
+  ComboBoxContent,
+  ComboBoxInput,
+  ComboBoxItem,
+} from "@/components/ui/combo-box"
 import {
   ModalBody,
   ModalContent,
@@ -209,22 +209,22 @@ export default function AccountsPage() {
             >
               <SearchInput placeholder="Search..." />
             </SearchField>
-            <Select
+            <ComboBox
               aria-label="Type"
               selectedKey={type}
-              onSelectionChange={(k) => setType(String(k))}
+              onSelectionChange={(k) => setType(k == null ? "all" : String(k))}
               className="w-full sm:w-[160px]"
             >
-              <SelectTrigger />
-              <SelectContent>
-                <SelectItem id="all">All Types</SelectItem>
+              <ComboBoxInput placeholder="All Types" />
+              <ComboBoxContent>
+                <ComboBoxItem id="all">All Types</ComboBoxItem>
                 {TYPES.map((t) => (
-                  <SelectItem key={t} id={t}>
+                  <ComboBoxItem key={t} id={t} textValue={titleCase(t)}>
                     {titleCase(t)}
-                  </SelectItem>
+                  </ComboBoxItem>
                 ))}
-              </SelectContent>
-            </Select>
+              </ComboBoxContent>
+            </ComboBox>
             <Button
               onPress={() => {
                 setEditing({ account_type: "asset" })
@@ -343,28 +343,27 @@ export default function AccountsPage() {
               <Label>Code</Label>
               <Input />
             </TextField>
-            <div className="grid gap-1.5">
+            <ComboBox
+              aria-label="Type"
+              selectedKey={editing?.account_type ?? null}
+              onSelectionChange={(k) =>
+                k &&
+                setEditing({
+                  ...editing!,
+                  account_type: k as Account["account_type"],
+                })
+              }
+            >
               <Label>Type</Label>
-              <Select
-                aria-label="Type"
-                selectedKey={editing?.account_type}
-                onSelectionChange={(k) =>
-                  setEditing({
-                    ...editing!,
-                    account_type: k as Account["account_type"],
-                  })
-                }
-              >
-                <SelectTrigger />
-                <SelectContent>
-                  {TYPES.map((t) => (
-                    <SelectItem key={t} id={t}>
-                      {titleCase(t)}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+              <ComboBoxInput placeholder="Select type" />
+              <ComboBoxContent>
+                {TYPES.map((t) => (
+                  <ComboBoxItem key={t} id={t} textValue={titleCase(t)}>
+                    {titleCase(t)}
+                  </ComboBoxItem>
+                ))}
+              </ComboBoxContent>
+            </ComboBox>
           </ModalBody>
           <ModalFooter className="pt-4 sm:pt-3">
             <Button

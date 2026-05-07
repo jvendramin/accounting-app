@@ -24,11 +24,11 @@ import {
   MenuTrigger,
 } from "@/components/ui/menu"
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-} from "@/components/ui/select"
+  ComboBox,
+  ComboBoxContent,
+  ComboBoxInput,
+  ComboBoxItem,
+} from "@/components/ui/combo-box"
 import {
   Modal,
   ModalBody,
@@ -682,22 +682,22 @@ export default function TransactionsPage() {
             >
               <SearchInput placeholder="Search..." />
             </SearchField>
-            <Select
+            <ComboBox
               aria-label="Type"
               selectedKey={type}
-              onSelectionChange={(k) => setType(String(k))}
+              onSelectionChange={(k) => setType(k == null ? "all" : String(k))}
               className="w-full sm:w-[160px]"
             >
-              <SelectTrigger />
-              <SelectContent>
-                <SelectItem id="all">All Types</SelectItem>
+              <ComboBoxInput placeholder="All Types" />
+              <ComboBoxContent>
+                <ComboBoxItem id="all">All Types</ComboBoxItem>
                 {TYPES.map((t) => (
-                  <SelectItem key={t} id={t}>
+                  <ComboBoxItem key={t} id={t} textValue={titleCase(t)}>
                     {titleCase(t)}
-                  </SelectItem>
+                  </ComboBoxItem>
                 ))}
-              </SelectContent>
-            </Select>
+              </ComboBoxContent>
+            </ComboBox>
             <div className="flex w-full items-center gap-1 sm:w-auto">
               <DateRangePicker
                 aria-label="Date range"
@@ -920,43 +920,43 @@ export default function TransactionsPage() {
                   </TextField>
                 </div>
                 <div className="grid gap-4 sm:grid-cols-2">
-                  <div className="grid gap-1.5">
+                  <ComboBox
+                    aria-label="Type"
+                    selectedKey={simple.kind}
+                    onSelectionChange={(k) =>
+                      k && setSimple({ ...simple, kind: k as SimpleKind })
+                    }
+                  >
                     <Label>Type</Label>
-                    <Select
-                      aria-label="Kind"
-                      selectedKey={simple.kind}
-                      onSelectionChange={(k) =>
-                        setSimple({ ...simple, kind: k as SimpleKind })
-                      }
-                    >
-                      <SelectTrigger />
-                      <SelectContent>
-                        <SelectItem id="deposit">Deposit</SelectItem>
-                        <SelectItem id="withdrawal">Withdrawal</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="grid gap-1.5">
+                    <ComboBoxInput placeholder="Select type" />
+                    <ComboBoxContent>
+                      <ComboBoxItem id="deposit">Deposit</ComboBoxItem>
+                      <ComboBoxItem id="withdrawal">Withdrawal</ComboBoxItem>
+                    </ComboBoxContent>
+                  </ComboBox>
+                  <ComboBox
+                    aria-label="Account"
+                    selectedKey={simple.account_id ?? null}
+                    onSelectionChange={(k) =>
+                      setSimple({
+                        ...simple,
+                        account_id: k == null ? undefined : Number(k),
+                      })
+                    }
+                  >
                     <Label>Account</Label>
-                    <Select
-                      aria-label="Account"
-                      selectedKey={
-                        simple.account_id ? String(simple.account_id) : undefined
-                      }
-                      onSelectionChange={(k) =>
-                        setSimple({ ...simple, account_id: Number(k) })
-                      }
-                    >
-                      <SelectTrigger />
-                      <SelectContent>
-                        {cashAccounts.map((a) => (
-                          <SelectItem key={a.id} id={String(a.id)}>
-                            {`${a.code} — ${a.name}`}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
+                    <ComboBoxInput placeholder="Select account" />
+                    <ComboBoxContent items={cashAccounts}>
+                      {(a) => (
+                        <ComboBoxItem
+                          id={a.id}
+                          textValue={`${a.code} — ${a.name}`}
+                        >
+                          {`${a.code} — ${a.name}`}
+                        </ComboBoxItem>
+                      )}
+                    </ComboBoxContent>
+                  </ComboBox>
                 </div>
                 <div className="grid gap-4 sm:grid-cols-2">
                   <NumberField
@@ -977,32 +977,35 @@ export default function TransactionsPage() {
                     <Label>Amount</Label>
                     <NumberInput leading={<CurrencyDollarIcon />} />
                   </NumberField>
-                  <div className="grid gap-1.5">
+                  <ComboBox
+                    aria-label="Category"
+                    selectedKey={simple.category_id ?? null}
+                    onSelectionChange={(k) =>
+                      setSimple({
+                        ...simple,
+                        category_id: k == null ? undefined : Number(k),
+                      })
+                    }
+                  >
                     <Label>Category</Label>
-                    <Select
-                      aria-label="Category"
-                      selectedKey={
-                        simple.category_id
-                          ? String(simple.category_id)
-                          : undefined
-                      }
-                      onSelectionChange={(k) =>
-                        setSimple({ ...simple, category_id: Number(k) })
-                      }
-                    >
-                      <SelectTrigger />
-                      <SelectContent>
-                        {(simple.kind === "deposit"
+                    <ComboBoxInput placeholder="Select category" />
+                    <ComboBoxContent
+                      items={
+                        simple.kind === "deposit"
                           ? incomeAccounts
                           : expenseAccounts
-                        ).map((a) => (
-                          <SelectItem key={a.id} id={String(a.id)}>
-                            {`${a.code} — ${a.name}`}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
+                      }
+                    >
+                      {(a) => (
+                        <ComboBoxItem
+                          id={a.id}
+                          textValue={`${a.code} — ${a.name}`}
+                        >
+                          {`${a.code} — ${a.name}`}
+                        </ComboBoxItem>
+                      )}
+                    </ComboBoxContent>
+                  </ComboBox>
                 </div>
                 <TextField
                   value={simple.description}
@@ -1146,26 +1149,28 @@ export default function TransactionsPage() {
                               </TextField>
                             </td>
                             <td className="p-2">
-                              <Select
+                              <ComboBox
                                 aria-label="Account"
-                                selectedKey={
-                                  l.account_id
-                                    ? String(l.account_id)
-                                    : undefined
-                                }
+                                selectedKey={l.account_id ?? null}
                                 onSelectionChange={(k) =>
-                                  updateLine(i, { account_id: Number(k) })
+                                  updateLine(i, {
+                                    account_id:
+                                      k == null ? undefined : Number(k),
+                                  })
                                 }
                               >
-                                <SelectTrigger />
-                                <SelectContent>
-                                  {accounts.map((a) => (
-                                    <SelectItem key={a.id} id={String(a.id)}>
+                                <ComboBoxInput placeholder="Select" />
+                                <ComboBoxContent items={accounts}>
+                                  {(a) => (
+                                    <ComboBoxItem
+                                      id={a.id}
+                                      textValue={`${a.code} — ${a.name}`}
+                                    >
                                       {`${a.code} — ${a.name}`}
-                                    </SelectItem>
-                                  ))}
-                                </SelectContent>
-                              </Select>
+                                    </ComboBoxItem>
+                                  )}
+                                </ComboBoxContent>
+                              </ComboBox>
                             </td>
                             <td className="p-2">
                               <NumberField
