@@ -27,14 +27,11 @@ async function forward(req: Request, slug: string[]) {
   fwdHeaders.delete("host")
   fwdHeaders.delete("content-length")
   fwdHeaders.delete("connection")
-  // Cookies in the browser are scoped to our Vercel host, NOT to Neon's
-  // subdomain. Forwarding them upstream confuses Better Auth (returns 400).
-  // Better Auth's React adapter uses Bearer tokens (Authorization header),
-  // so dropping Cookie is safe and required.
-  fwdHeaders.delete("cookie")
-  // Same reason for Referer — upstream may reject when it doesn't match its
-  // own host.
-  fwdHeaders.delete("referer")
+  // Forward Cookie verbatim — Better Auth uses cookies for session lookup
+  // and we already rewrote the Set-Cookie domain on the response side, so
+  // the same opaque cookie value travels back here on subsequent requests.
+  // Same reason we keep Referer — upstream may use it but doesn't reject on
+  // it; only x-forwarded-host (below) caused a 400 in testing.
   // Vercel injects x-forwarded-* and x-vercel-* on every server request.
   // Better Auth uses x-forwarded-host to derive its trusted host and rejects
   // (HTTP 400) when it sees our Vercel hostname. Drop the whole family.
