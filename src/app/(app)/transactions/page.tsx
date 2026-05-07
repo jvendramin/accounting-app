@@ -184,6 +184,21 @@ export default function TransactionsPage() {
     summary: string
     steps: string[]
   } | null>(null)
+  // Drafts UI
+  const [draftsOpen, setDraftsOpen] = useState(false)
+  const [drafts, setDrafts] = useState<
+    Array<{ id: number; name: string; payload: any; updated_at: string }>
+  >([])
+  const reloadDrafts = () =>
+    api
+      .get<typeof drafts>("/api/drafts")
+      .then(setDrafts)
+      .catch(() => {})
+
+  // Pending-overwrite prompt: queued action runs after the user accepts.
+  const [overwritePrompt, setOverwritePrompt] = useState<null | {
+    onAccept: () => void
+  }>(null)
 
   // Auto-open the create modal when arrived via ?new=1 (from Dashboard quick-create).
   const searchParams = useSearchParams()
@@ -191,13 +206,17 @@ export default function TransactionsPage() {
   const pathname = usePathname()
   useEffect(() => {
     if (searchParams.get("new") === "1") {
-      resetForms()
-      setOpen(true)
+      const go = () => {
+        resetForms()
+        setOpen(true)
+      }
       router.replace(pathname)
+      guardOverwrite(go)
     } else if (searchParams.get("from-receipt") === "1") {
       const raw = sessionStorage.getItem("receipt-prefill")
       sessionStorage.removeItem("receipt-prefill")
-      if (raw) {
+      const apply = () => {
+        if (!raw) return
         try {
           const r = JSON.parse(raw) as {
             description?: string
@@ -232,10 +251,12 @@ export default function TransactionsPage() {
         } catch {}
       }
       router.replace(pathname)
+      guardOverwrite(apply)
     } else if (searchParams.get("clone") === "1") {
       const raw = sessionStorage.getItem("clone-tx")
       sessionStorage.removeItem("clone-tx")
-      if (raw) {
+      const apply = () => {
+        if (!raw) return
         try {
           const src = JSON.parse(raw) as Txn
           setEditingId(null) // not editing — creating
@@ -279,6 +300,7 @@ export default function TransactionsPage() {
         }
       }
       router.replace(pathname)
+      guardOverwrite(apply)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams])
@@ -301,6 +323,59 @@ export default function TransactionsPage() {
     ],
   })
 
+  // ---- Autosave to localStorage ----
+  const DRAFT_KEY = "tx-modal-draft"
+  const snapshotForm = () => ({ tab, simple, journal, editingId })
+  const loadSnapshot = (s: ReturnType<typeof snapshotForm>) => {
+    setTab(s.tab)
+    setSimple(s.simple)
+    setJournal(s.journal)
+    setEditingId(s.editingId ?? null)
+  }
+  const hasDraftInStorage = () => {
+    if (typeof window === "undefined") return false
+    const raw = localStorage.getItem(DRAFT_KEY)
+    if (!raw) return false
+    try {
+      const v = JSON.parse(raw)
+      // Treat truly-empty (no description, no amount, no edits) as no draft.
+      const empty =
+        !v?.simple?.description &&
+        !v?.simple?.amount &&
+        !v?.journal?.description &&
+        !(v?.journal?.lines ?? []).some(
+          (l: any) => l?.account_id || l?.debit || l?.credit || l?.memo,
+        )
+      return !empty
+    } catch {
+      return false
+    }
+  }
+  // Persist on every form change while modal is open.
+  useEffect(() => {
+    if (!open) return
+    if (typeof window === "undefined") return
+    localStorage.setItem(DRAFT_KEY, JSON.stringify(snapshotForm()))
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, simple, journal, tab, editingId])
+  const clearLocalDraft = () => {
+    if (typeof window !== "undefined") localStorage.removeItem(DRAFT_KEY)
+  }
+
+  // Wrap actions that would overwrite in-progress work.
+  const guardOverwrite = (action: () => void) => {
+    if (hasDraftInStorage() && !open) {
+      setOverwritePrompt({
+        onAccept: () => {
+          clearLocalDraft()
+          action()
+        },
+      })
+    } else {
+      action()
+    }
+  }
+
   const resetForms = () => {
     setSimple({
       date: today(),
@@ -321,10 +396,11 @@ export default function TransactionsPage() {
     setEditingId(null)
     setTab("simple")
   }
-  const newTxn = () => {
-    resetForms()
-    setOpen(true)
-  }
+  const newTxn = () =>
+    guardOverwrite(() => {
+      resetForms()
+      setOpen(true)
+    })
 
   const editTxn = (t: Txn) => {
     setEditingId(t.id)
@@ -458,6 +534,7 @@ export default function TransactionsPage() {
       else await api.post("/api/transactions", payload)
       setOpen(false)
       resetForms()
+      clearLocalDraft()
       invalidateCachePrefix("transactions:")
       invalidateCache(
         "dashboard:reports/profit_and_loss",
@@ -1038,6 +1115,37 @@ export default function TransactionsPage() {
           </ModalBody>
           <ModalFooter className="pt-4 sm:pt-3">
             <Button
+              intent="plain"
+              onPress={() => {
+                reloadDrafts()
+                setDraftsOpen(true)
+              }}
+              className="me-auto hidden sm:inline-flex"
+            >
+              Drafts…
+            </Button>
+            <Button
+              intent="outline"
+              onPress={async () => {
+                const name =
+                  (tab === "simple" ? simple.description : journal.description) ||
+                  `Draft ${new Date().toLocaleString()}`
+                try {
+                  await api.post("/api/drafts", {
+                    draft: { name, payload: snapshotForm() },
+                  })
+                  toast.success("Saved as draft")
+                  clearLocalDraft()
+                  setOpen(false)
+                  resetForms()
+                } catch {
+                  /* toasted */
+                }
+              }}
+            >
+              Save draft
+            </Button>
+            <Button
               intent="outline"
               onPress={() => setOpen(false)}
               className="hidden sm:inline-flex"
@@ -1046,6 +1154,102 @@ export default function TransactionsPage() {
             </Button>
             <Button onPress={save}>Save</Button>
           </ModalFooter>
+      </ModalContent>
+
+      {/* Drafts list */}
+      <ModalContent
+        size="lg"
+        isOpen={draftsOpen}
+        onOpenChange={setDraftsOpen}
+      >
+        <ModalHeader>
+          <ModalTitle>Drafts</ModalTitle>
+        </ModalHeader>
+        <ModalBody>
+          {drafts.length === 0 ? (
+            <div className="p-6 text-center text-sm text-muted-fg">
+              No drafts saved.
+            </div>
+          ) : (
+            <ul className="grid gap-2">
+              {drafts.map((d) => (
+                <li
+                  key={d.id}
+                  className="flex items-center justify-between gap-3 rounded-lg border px-3 py-2.5"
+                >
+                  <div className="min-w-0 flex-1">
+                    <div className="truncate font-medium">{d.name}</div>
+                    <div className="text-xs text-muted-fg">
+                      {new Date(d.updated_at).toLocaleString()}
+                    </div>
+                  </div>
+                  <Button
+                    intent="outline"
+                    size="sm"
+                    onPress={() => {
+                      try {
+                        loadSnapshot(d.payload)
+                        setDraftsOpen(false)
+                        setOpen(true)
+                      } catch {
+                        toast.error("Couldn't load this draft")
+                      }
+                    }}
+                  >
+                    Resume
+                  </Button>
+                  <Button
+                    intent="plain"
+                    size="sq-sm"
+                    aria-label="Delete draft"
+                    onPress={async () => {
+                      await api.delete(`/api/drafts/${d.id}`)
+                      reloadDrafts()
+                    }}
+                  >
+                    <IconTrash />
+                  </Button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </ModalBody>
+      </ModalContent>
+
+      {/* Overwrite-in-progress confirm */}
+      <ModalContent
+        size="md"
+        role="alertdialog"
+        isOpen={!!overwritePrompt}
+        onOpenChange={(v) => {
+          if (!v) setOverwritePrompt(null)
+        }}
+      >
+        <ModalHeader>
+          <ModalTitle>You have unsaved progress</ModalTitle>
+        </ModalHeader>
+        <ModalBody>
+          <p className="text-sm">
+            Discard your in-progress transaction and continue? You can also
+            close this and use{" "}
+            <span className="font-medium">Save draft</span> to keep it.
+          </p>
+        </ModalBody>
+        <ModalFooter>
+          <Button intent="outline" onPress={() => setOverwritePrompt(null)}>
+            Keep editing
+          </Button>
+          <Button
+            intent="danger"
+            onPress={() => {
+              const fn = overwritePrompt?.onAccept
+              setOverwritePrompt(null)
+              fn?.()
+            }}
+          >
+            Discard &amp; continue
+          </Button>
+        </ModalFooter>
       </ModalContent>
     </div>
   )

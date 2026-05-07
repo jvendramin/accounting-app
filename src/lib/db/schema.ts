@@ -143,6 +143,16 @@ export const transactionTaxes = pgTable("transaction_taxes", {
 
 export type Tax = typeof taxes.$inferSelect
 
+export const transactionDrafts = pgTable("transaction_drafts", {
+  id: bigserial("id", { mode: "number" }).primaryKey(),
+  name: varchar("name").notNull(),
+  payload: text("payload").notNull(),
+  userSub: varchar("user_sub"),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+})
+export type TransactionDraft = typeof transactionDrafts.$inferSelect
+
 export const userPreferences = pgTable("user_preferences", {
   userSub: varchar("user_sub").primaryKey(),
   prefs: text("prefs").notNull().default("{}"),
