@@ -217,80 +217,54 @@ export default function DashboardPage() {
         </Menu>
       </div>
 
-      <div
-        className={
-          suggestions.length > 0
-            ? "grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(320px,380px)]"
-            : "grid gap-4"
-        }
-      >
-        <div className="grid gap-4 min-w-0 self-start">
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            <Stat
-              label="Income (last 12mo)"
-              value={fmtMoney(pnl?.total_income ?? 0)}
-            />
-            <Stat
-              label="Expenses"
-              value={fmtMoney(pnl?.total_expense ?? 0)}
-            />
-            <Stat
-              label="Net Income"
-              value={fmtMoney(pnl?.net_income ?? 0)}
-            />
-            <Stat
-              label="Savings rate"
-              value={
-                pnl && pnl.total_income > 0
-                  ? `${((pnl.net_income / pnl.total_income) * 100).toFixed(1)}%`
-                  : "—"
-              }
-            />
-          </div>
-          <div className="grid gap-4 xl:grid-cols-2">
-            <Card>
-              <CardHeader>
-                <CardTitle>Income vs Expense</CardTitle>
-                <CardDescription>
-                  Monthly totals from journal lines.
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <BarChart
-                  containerHeight={280}
-                  data={pnl?.monthly ?? []}
-                  dataKey="month"
-                  valueFormatter={formatCompact}
-                  xAxisProps={{ interval: 0 }}
-                  config={{
-                    income: { label: "Income", color: "var(--color-emerald-500)" },
-                    expense: { label: "Expense", color: "var(--color-red-500)" },
-                  }}
-                />
-              </CardContent>
-            </Card>
-            <Card>
-              <CardHeader>
-                <CardTitle>Cashflow</CardTitle>
-                <CardDescription>Net cash movement per month.</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <LineChart
-                  containerHeight={280}
-                  data={cash?.monthly ?? []}
-                  dataKey="month"
-                  valueFormatter={formatCompact}
-                  config={{
-                    net: { label: "Net", color: "var(--color-sky-500)" },
-                  }}
-                />
-              </CardContent>
-            </Card>
-          </div>
+      <div className="grid gap-4 lg:grid-cols-4">
+        <Stat
+          label="Income (last 12mo)"
+          value={fmtMoney(pnl?.total_income ?? 0)}
+        />
+        <Stat label="Expenses" value={fmtMoney(pnl?.total_expense ?? 0)} />
+        <Stat label="Net Income" value={fmtMoney(pnl?.net_income ?? 0)} />
+        <div className="grid gap-4 lg:col-span-3 xl:grid-cols-2 lg:order-3">
+          <Card>
+            <CardHeader>
+              <CardTitle>Income vs Expense</CardTitle>
+              <CardDescription>
+                Monthly totals from journal lines.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <BarChart
+                containerHeight={280}
+                data={pnl?.monthly ?? []}
+                dataKey="month"
+                valueFormatter={formatCompact}
+                xAxisProps={{ interval: 0 }}
+                config={{
+                  income: { label: "Income", color: "var(--color-emerald-500)" },
+                  expense: { label: "Expense", color: "var(--color-red-500)" },
+                }}
+              />
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader>
+              <CardTitle>Cashflow</CardTitle>
+              <CardDescription>Net cash movement per month.</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <LineChart
+                containerHeight={280}
+                data={cash?.monthly ?? []}
+                dataKey="month"
+                valueFormatter={formatCompact}
+                config={{ net: { label: "Net", color: "var(--color-sky-500)" } }}
+              />
+            </CardContent>
+          </Card>
         </div>
 
       {suggestions.length > 0 && (
-        <Card className="self-start">
+        <Card className="lg:row-span-2 lg:order-2">
           <CardHeader>
             <CardTitle>Recurring this week</CardTitle>
             <CardDescription>
