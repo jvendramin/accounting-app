@@ -173,13 +173,13 @@ export function SettingsModal({
         <ModalTitle>Settings</ModalTitle>
       </ModalHeader>
       <ModalBody>
-        <Tabs aria-label="Settings sections">
+        <Tabs aria-label="Settings sections" className="w-full">
           <TabList>
             <Tab id="personal">Personal</Tab>
             <Tab id="business">Business profile</Tab>
             <Tab id="app">App settings</Tab>
           </TabList>
-          <TabPanels>
+          <TabPanels className="w-full">
             <TabPanel id="personal" className="pt-4 w-full">
               <div className="grid gap-4 w-full md:grid-cols-2">
                 <TextField
