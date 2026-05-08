@@ -204,6 +204,19 @@ export default function TaxesPage() {
             totalRows={filtered.length}
             onClear={() => setSelection(new Set())}
             onDelete={bulkDelete}
+            exportFilename={`taxes-${new Date().toISOString().slice(0, 10)}`}
+            getExportRows={() => {
+              const ids = new Set(selectedIds(selection, filtered))
+              return filtered
+                .filter((t) => ids.has(t.id))
+                .map((t) => ({
+                  id: t.id,
+                  name: t.name,
+                  rate: t.rate,
+                  description: t.description ?? "",
+                  is_active: t.is_active,
+                }))
+            }}
           />
           <Table
             aria-label="Taxes"

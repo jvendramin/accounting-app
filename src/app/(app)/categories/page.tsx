@@ -236,6 +236,18 @@ export default function CategoriesPage() {
             totalRows={filtered.length}
             onClear={() => setSelection(new Set())}
             onDelete={bulkDelete}
+            exportFilename={`categories-${new Date().toISOString().slice(0, 10)}`}
+            getExportRows={() => {
+              const ids = new Set(selectedIds(selection, filtered))
+              return filtered
+                .filter((c) => ids.has(c.id))
+                .map((c) => ({
+                  id: c.id,
+                  name: c.name,
+                  kind: c.kind,
+                  description: c.description ?? "",
+                }))
+            }}
           />
           <Table
             allowResize

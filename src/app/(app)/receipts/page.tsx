@@ -205,6 +205,21 @@ export default function ReceiptsPage() {
           totalRows={rows.length}
           onClear={() => setSelection(new Set())}
           onDelete={bulkDelete}
+          exportFilename={`receipts-${new Date().toISOString().slice(0, 10)}`}
+          getExportRows={() => {
+            const ids = new Set(selectedIds(selection, rows))
+            return rows
+              .filter((r) => ids.has(r.id))
+              .map((r) => ({
+                id: r.id,
+                filename: r.filename,
+                content_type: r.content_type ?? "",
+                byte_size: r.byte_size ?? 0,
+                url: r.url ?? "",
+                created_at: r.created_at ?? "",
+                analyzed_at: r.analyzed_at ?? "",
+              }))
+          }}
         />
         <Table
           allowResize

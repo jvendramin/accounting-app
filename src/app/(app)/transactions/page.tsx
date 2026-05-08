@@ -776,6 +776,28 @@ export default function TransactionsPage() {
             totalRows={rows.length}
             onClear={() => setSelection(new Set())}
             onDelete={bulkDelete}
+            exportFilename={`transactions-${new Date().toISOString().slice(0, 10)}`}
+            getExportRows={() => {
+              const ids = new Set(selectedIds(selection, rows))
+              return rows
+                .filter((r) => ids.has(r.id))
+                .map((t) => ({
+                  id: t.id,
+                  date: t.date,
+                  description: t.description,
+                  reference: t.reference ?? "",
+                  type:
+                    (t as any).transaction_type ?? t.transactionType ?? "",
+                  amount: Number(t.amount),
+                  status: t.status ?? "",
+                  journal_lines: (t.journal_lines ?? []).map((l) => ({
+                    account_id: l.account_id,
+                    debit: Number(l.debit),
+                    credit: Number(l.credit),
+                    memo: l.memo ?? "",
+                  })),
+                }))
+            }}
           />
           <Table
             allowResize

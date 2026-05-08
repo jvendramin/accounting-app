@@ -245,6 +245,20 @@ export default function AccountsPage() {
             totalRows={filtered.length}
             onClear={() => setSelection(new Set())}
             onDelete={bulkDelete}
+            exportFilename={`accounts-${new Date().toISOString().slice(0, 10)}`}
+            getExportRows={() => {
+              const ids = new Set(selectedIds(selection, filtered))
+              return filtered
+                .filter((a) => ids.has(a.id))
+                .map((a) => ({
+                  id: a.id,
+                  code: a.code ?? "",
+                  name: a.name,
+                  account_type: a.account_type,
+                  description: a.description ?? "",
+                  balance: a.balance,
+                }))
+            }}
           />
           <Table
             allowResize
