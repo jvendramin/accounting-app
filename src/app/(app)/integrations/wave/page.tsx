@@ -790,6 +790,18 @@ const fmt = (n: number) =>
     currency: "USD",
   }).format(n)
 
+// Fisher–Yates: returns [0..n-1] in random order. Used by SamplePreview to
+// avoid showing 20 chronologically-adjacent rows that are likely all the
+// same type. Stable across re-renders within a memoised dep list.
+function shuffleIndices(n: number): number[] {
+  const a = Array.from({ length: n }, (_, i) => i)
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1))
+    ;[a[i], a[j]] = [a[j], a[i]]
+  }
+  return a
+}
+
 // Collapsible card wrapper using native <details>/<summary> so it works
 // without JS, supports keyboard navigation by default, and animates the
 // chevron with a CSS transform when [open]. Visually matches the project's
@@ -841,8 +853,6 @@ function SamplePreview({
   groups: WaveParseResult["groups"]
   accountTypes: (name: string) => AcctType | undefined
 }) {
-  if (groups.length === 0) return null
-  const sample = groups.slice(0, 20)
   // Mirror the server's classifier (route.ts) so the preview badges line
   // up with what actually gets written. Use the *largest* line on each side
   // as the principal so compound entries (sale → cash + tax) classify like
@@ -865,6 +875,46 @@ function SamplePreview({
       : t === "withdrawal"
         ? "danger"
         : "info"
+
+  // Stratified random sample: take roughly equal slices from each
+  // classified type so the preview shows a representative mix of
+  // deposits / withdrawals / journal entries, not just the first 20
+  // chronologically (which are usually all the same type).
+  const SAMPLE_SIZE = 20
+  // Shuffle order is keyed only on groups identity so it stays stable
+  // across re-renders within a single parse, but re-randomises on a new
+  // upload. Account-type overrides re-classify but don't re-shuffle.
+  const order = useMemo(
+    () => shuffleIndices(groups.length),
+    [groups],
+  )
+  if (groups.length === 0) return null
+  const buckets: Record<string, WaveParseResult["groups"]> = {
+    deposit: [],
+    withdrawal: [],
+    journal_entry: [],
+  }
+  for (const i of order) {
+    const g = groups[i]
+    const t = classify(g)
+    if (buckets[t]) buckets[t].push(g)
+  }
+  const perType = Math.ceil(SAMPLE_SIZE / 3)
+  let sample = [
+    ...buckets.deposit.slice(0, perType),
+    ...buckets.withdrawal.slice(0, perType),
+    ...buckets.journal_entry.slice(0, perType),
+  ]
+  // Top up from any remaining (in shuffled order) if a type was scarce.
+  if (sample.length < SAMPLE_SIZE) {
+    const taken = new Set(sample)
+    for (const i of order) {
+      if (sample.length >= SAMPLE_SIZE) break
+      const g = groups[i]
+      if (!taken.has(g)) sample.push(g)
+    }
+  }
+  sample = sample.slice(0, SAMPLE_SIZE)
   return (
     <div className="grid gap-2">
       <div className="text-xs font-medium text-muted-fg">
