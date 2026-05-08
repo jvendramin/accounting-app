@@ -12,6 +12,7 @@ import {
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Label } from "@/components/ui/field"
+import { ChevronRight } from "lucide-react"
 import {
   ComboBox,
   ComboBoxContent,
@@ -245,151 +246,131 @@ function Importer() {
 
   return (
     <div className="grid gap-4">
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base sm:text-lg">
-            1. Export from Wave
-          </CardTitle>
-          <CardDescription>
+      <CollapsibleSection
+        title="1. Export from Wave"
+        description={
+          <>
             In Wave, open <span className="font-medium">Reports</span> →{" "}
             <span className="font-medium">
               Account Transactions (General Ledger)
             </span>
             , set the date range, and click{" "}
             <span className="font-medium">Export → CSV</span>.
-          </CardDescription>
-        </CardHeader>
-      </Card>
+          </>
+        }
+        defaultOpen={!parsed}
+      />
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base sm:text-lg">2. Upload CSV</CardTitle>
-          <CardDescription>
-            We parse the CSV in your browser and build a complete preview —
-            accounts, categories, transactions. Nothing hits the database
-            until you click Import.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          {!parsed ? (
-            <FileDrop onFile={onFile} />
-          ) : (
-            <div className="grid gap-2">
-              <div className="flex flex-col gap-2 rounded-md border bg-muted/20 px-3 py-2 text-sm sm:flex-row sm:items-center">
-                <span className="truncate font-medium sm:min-w-0 sm:flex-1">
-                  {filename}
-                </span>
-                <Button
-                  intent="plain"
-                  size="sm"
-                  onPress={reset}
-                  className="self-start sm:self-auto"
-                >
-                  Change file
-                </Button>
-              </div>
-              <SummaryStats
-                accounts={parsed.accounts.length}
-                categories={derivedCategories.length}
-                groups={totalGroups}
-                ambiguous={parsed.ambiguous.length}
-                totals={totalsByType ?? undefined}
-              />
+      <CollapsibleSection
+        title="2. Upload CSV"
+        description="We parse the CSV in your browser and build a complete preview — accounts, categories, transactions. Nothing hits the database until you click Import."
+        defaultOpen
+      >
+        {!parsed ? (
+          <FileDrop onFile={onFile} />
+        ) : (
+          <div className="grid gap-2">
+            <div className="flex flex-col gap-2 rounded-md border bg-muted/20 px-3 py-2 text-sm sm:flex-row sm:items-center">
+              <span className="truncate font-medium sm:min-w-0 sm:flex-1">
+                {filename}
+              </span>
+              <Button
+                intent="plain"
+                size="sm"
+                onPress={reset}
+                className="self-start sm:self-auto"
+              >
+                Change file
+              </Button>
             </div>
-          )}
-        </CardContent>
-      </Card>
+            <SummaryStats
+              accounts={parsed.accounts.length}
+              categories={derivedCategories.length}
+              groups={totalGroups}
+              ambiguous={parsed.ambiguous.length}
+              totals={totalsByType ?? undefined}
+            />
+          </div>
+        )}
+      </CollapsibleSection>
 
       {parsed && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base sm:text-lg">
-              Accounts ({parsed.accounts.length})
-            </CardTitle>
-            <CardDescription>
-              Each section header in your Wave CSV becomes an account. Type is
-              inferred from the name + activity — adjust anything that looks
-              wrong.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="grid w-full min-w-0 gap-2 sm:grid-cols-[minmax(0,1fr)_auto_auto] sm:gap-x-3 sm:gap-y-1.5 sm:items-center">
-              <div className="hidden text-xs font-medium text-muted-fg sm:contents">
-                <div>Name</div>
-                <div className="text-right">Balance</div>
-                <div>Type</div>
-              </div>
-              {parsed.accounts.map((a) => (
-                <AccountRow
-                  key={a.name}
-                  acct={a}
-                  type={accountTypeFor(a)}
-                  onTypeChange={(t) =>
-                    setTypeOverrides((prev) => ({
-                      ...prev,
-                      [a.name.toLowerCase()]: t,
-                    }))
-                  }
-                />
-              ))}
+        <CollapsibleSection
+          title={`Accounts (${parsed.accounts.length})`}
+          description="Each section header in your Wave CSV becomes an account. Type is inferred from the name + activity — adjust anything that looks wrong."
+        >
+          <div className="grid w-full min-w-0 gap-2 sm:grid-cols-[minmax(0,1fr)_auto_auto] sm:gap-x-3 sm:gap-y-1.5 sm:items-center">
+            <div className="hidden text-xs font-medium text-muted-fg sm:contents">
+              <div>Name</div>
+              <div className="text-right">Balance</div>
+              <div>Type</div>
             </div>
-          </CardContent>
-        </Card>
+            {parsed.accounts.map((a) => (
+              <AccountRow
+                key={a.name}
+                acct={a}
+                type={accountTypeFor(a)}
+                onTypeChange={(t) =>
+                  setTypeOverrides((prev) => ({
+                    ...prev,
+                    [a.name.toLowerCase()]: t,
+                  }))
+                }
+              />
+            ))}
+          </div>
+        </CollapsibleSection>
       )}
 
       {parsed && derivedCategories.length > 0 && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base sm:text-lg">
-              Categories ({derivedCategories.length})
-            </CardTitle>
-            <CardDescription>
-              Income and expense accounts above are also created as categories
-              for use in the transaction picker. Existing categories are not
-              touched.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="flex flex-wrap gap-1.5">
-              {derivedCategories.map((c) => (
-                <Badge
-                  key={c.name}
-                  intent={c.kind === "income" ? "success" : "secondary"}
-                >
-                  {c.name}
-                </Badge>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
+        <CollapsibleSection
+          title={`Categories (${derivedCategories.length})`}
+          description="Income and expense accounts above are also created as categories for use in the transaction picker. Existing categories are not touched."
+        >
+          <div className="flex flex-wrap gap-1.5">
+            {derivedCategories.map((c) => (
+              <Badge
+                key={c.name}
+                intent={c.kind === "income" ? "success" : "secondary"}
+              >
+                {c.name}
+              </Badge>
+            ))}
+          </div>
+        </CollapsibleSection>
       )}
 
       {parsed && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base sm:text-lg">
-              Transactions ({totalGroups})
-            </CardTitle>
-            <CardDescription>
-              Each balanced double-entry from the CSV becomes one transaction
-              with its journal lines. Compound entries (e.g. sale → cash + tax)
-              are reconstructed where possible.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="grid gap-2 text-sm">
-            <Row label="Pairs detected automatically" value={parsed.groups.length} />
-            <Row label="Manually included" value={manualGroups.length} />
-            <Row
-              label="Skipped"
-              value={parsed.ambiguous.length - manualGroups.length}
-              intent={
-                parsed.ambiguous.length - manualGroups.length > 0
-                  ? "warning"
-                  : "success"
-              }
+        <CollapsibleSection
+          title={`Transactions (${totalGroups})`}
+          description="Each balanced double-entry from the CSV becomes one transaction with its journal lines. Compound entries (e.g. sale → cash + tax) are reconstructed where possible."
+          defaultOpen
+        >
+          <div className="grid gap-3 text-sm">
+            <div className="grid gap-2">
+              <Row label="Pairs detected automatically" value={parsed.groups.length} />
+              <Row label="Manually included" value={manualGroups.length} />
+              <Row
+                label="Skipped"
+                value={parsed.ambiguous.length - manualGroups.length}
+                intent={
+                  parsed.ambiguous.length - manualGroups.length > 0
+                    ? "warning"
+                    : "success"
+                }
+              />
+            </div>
+            <SamplePreview
+              groups={[...parsed.groups, ...manualGroups]}
+              accountTypes={(name: string) => {
+                const fromInferred = parsed.accounts.find(
+                  (a) => a.name.toLowerCase() === name.toLowerCase(),
+                )
+                return fromInferred ? accountTypeFor(fromInferred) : undefined
+              }}
             />
-          </CardContent>
-        </Card>
+          </div>
+        </CollapsibleSection>
       )}
 
       {parsed && parsed.ambiguous.length > 0 && (
@@ -808,3 +789,101 @@ const fmt = (n: number) =>
     style: "currency",
     currency: "USD",
   }).format(n)
+
+// Collapsible card wrapper using native <details>/<summary> so it works
+// without JS, supports keyboard navigation by default, and animates the
+// chevron with a CSS transform when [open]. Visually matches the project's
+// Card primitive.
+function CollapsibleSection({
+  title,
+  description,
+  defaultOpen = false,
+  children,
+}: {
+  title: React.ReactNode
+  description?: React.ReactNode
+  defaultOpen?: boolean
+  children?: React.ReactNode
+}) {
+  return (
+    <details
+      open={defaultOpen}
+      className="group/section rounded-lg border bg-bg shadow-xs"
+    >
+      <summary className="flex cursor-pointer list-none items-start gap-3 p-(--gutter,--spacing(6)) [&::-webkit-details-marker]:hidden">
+        <ChevronRight className="mt-0.5 size-4 shrink-0 text-muted-fg transition-transform group-open/section:rotate-90" />
+        <div className="grid min-w-0 flex-1 gap-1">
+          <div className="font-semibold text-base/6">{title}</div>
+          {description && (
+            <div className="text-pretty text-muted-fg text-sm/6">
+              {description}
+            </div>
+          )}
+        </div>
+      </summary>
+      {children && (
+        <div className="px-(--gutter,--spacing(6)) pb-(--gutter,--spacing(6))">
+          {children}
+        </div>
+      )}
+    </details>
+  )
+}
+
+// Quick "what does this look like" peek at the first few transactions the
+// importer will create. Date · description · amount · classified type
+// (deposit / withdrawal / journal_entry) so users can sanity-check before
+// pulling the trigger.
+function SamplePreview({
+  groups,
+  accountTypes,
+}: {
+  groups: WaveParseResult["groups"]
+  accountTypes: (name: string) => AcctType | undefined
+}) {
+  if (groups.length === 0) return null
+  const sample = groups.slice(0, 5)
+  const classify = (g: WaveParseResult["groups"][number]) => {
+    if (g.debits.length !== 1 || g.credits.length !== 1) return "journal_entry"
+    const dr = accountTypes(g.debits[0].account)
+    const cr = accountTypes(g.credits[0].account)
+    if (dr === "asset" && cr === "income") return "deposit"
+    if (cr === "asset" && dr === "expense") return "withdrawal"
+    return "journal_entry"
+  }
+  const intent = (t: string) =>
+    t === "deposit"
+      ? "success"
+      : t === "withdrawal"
+        ? "danger"
+        : "primary"
+  return (
+    <div className="grid gap-2">
+      <div className="text-xs font-medium text-muted-fg">
+        Sample (first {sample.length} of {groups.length})
+      </div>
+      <div className="rounded-md border bg-muted/20">
+        {sample.map((g, i) => {
+          const t = classify(g)
+          return (
+            <div
+              key={i}
+              className="flex items-start gap-2 border-b px-3 py-2 last:border-b-0 sm:items-center"
+            >
+              <div className="min-w-0 flex-1">
+                <div className="truncate font-medium">{g.description}</div>
+                <div className="truncate text-xs text-muted-fg">{g.date}</div>
+              </div>
+              <Badge intent={intent(t) as any} className="shrink-0">
+                {titleCase(t.replace("_", " "))}
+              </Badge>
+              <div className="w-20 shrink-0 text-right tabular-nums text-sm">
+                {fmt(g.amount)}
+              </div>
+            </div>
+          )
+        })}
+      </div>
+    </div>
+  )
+}

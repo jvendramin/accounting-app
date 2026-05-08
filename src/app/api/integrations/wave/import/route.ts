@@ -52,16 +52,27 @@ export async function POST(req: Request) {
   const body = Input.parse(await req.json())
 
   // Step 1: upsert accounts by name. We don't blow away existing accounts —
-  // just create the missing ones. Build a name → id map so journal lines
-  // can resolve their account targets.
+  // just create the missing ones. Build name → id and name → type maps so
+  // journal lines can resolve their account targets and we can classify
+  // each group as deposit / withdrawal / journal_entry.
   const existing = await db.select().from(accounts)
   const byName = new Map<string, number>()
-  for (const a of existing) byName.set(a.name.trim().toLowerCase(), a.id)
+  const typeByName = new Map<string, string>()
+  for (const a of existing) {
+    const key = a.name.trim().toLowerCase()
+    byName.set(key, a.id)
+    typeByName.set(key, a.accountType)
+  }
 
   const accountsCreated: Array<{ id: number; name: string }> = []
   for (const a of body.accounts) {
     const key = a.name.trim().toLowerCase()
-    if (byName.has(key)) continue
+    if (byName.has(key)) {
+      // Make sure the type map covers this name even when the row already
+      // existed pre-import (so classification still works for re-imports).
+      if (!typeByName.has(key)) typeByName.set(key, a.type)
+      continue
+    }
     const [created] = await db
       .insert(accounts)
       .values({
@@ -70,6 +81,7 @@ export async function POST(req: Request) {
       })
       .returning({ id: accounts.id, name: accounts.name })
     byName.set(key, created.id)
+    typeByName.set(key, a.type)
     accountsCreated.push(created)
   }
 
@@ -98,11 +110,21 @@ export async function POST(req: Request) {
       continue
     }
     const total = g.debits.reduce((s, l) => s + l.amount, 0)
-    // Determine a coarse transaction_type from the line shape so the existing
-    // dashboard / reports rendering can colour-code rows. Single-debit /
-    // single-credit pair where one side is an asset is a deposit/withdrawal;
-    // anything else is a journal entry.
-    const txnType = "journal_entry"
+    // Determine a coarse transaction_type from the line shape:
+    // - 2-line entry where the debit-side account is `asset` and the
+    //   credit-side is `income` → deposit (money in to the asset).
+    // - 2-line entry where the credit-side account is `asset` and the
+    //   debit-side is `expense` → withdrawal (money out of the asset).
+    // - Everything else (compound entries, transfers, equity moves) →
+    //   journal_entry, which the rest of the app already renders.
+    let txnType = "journal_entry"
+    if (g.debits.length === 1 && g.credits.length === 1) {
+      const drType = typeByName.get(g.debits[0].account.trim().toLowerCase())
+      const crType = typeByName.get(g.credits[0].account.trim().toLowerCase())
+      if (drType === "asset" && crType === "income") txnType = "deposit"
+      else if (crType === "asset" && drType === "expense")
+        txnType = "withdrawal"
+    }
     const [tx] = await db
       .insert(transactions)
       .values({
