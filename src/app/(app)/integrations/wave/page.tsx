@@ -25,6 +25,7 @@ import { api } from "@/lib/api"
 import {
   parseWaveCsv,
   type WaveAccountSummary,
+  type WaveLine,
   type WaveParseResult,
 } from "@/lib/wave-import"
 import { invalidateCachePrefix, invalidateCache } from "@/hooks/use-cached-fetch"
@@ -102,6 +103,13 @@ export default function WaveIntegrationPage() {
   )
 }
 
+const SUSPENSE_NAME = "Suspense — Wave Import"
+
+type ManualOverride = {
+  include: boolean
+  counterAccount: string // name of the offsetting account
+}
+
 function TransactionsTab() {
   const [filename, setFilename] = useState<string | null>(null)
   const [parsed, setParsed] = useState<WaveParseResult | null>(null)
@@ -109,6 +117,10 @@ function TransactionsTab() {
   const [typeOverrides, setTypeOverrides] = useState<Record<string, AcctType>>(
     {},
   )
+  // Per-skipped-row decisions: include + counter account.
+  const [manualOverrides, setManualOverrides] = useState<
+    Record<number, ManualOverride>
+  >({})
   const [submitting, setSubmitting] = useState(false)
   const [result, setResult] = useState<{
     accounts_created: number
@@ -124,12 +136,14 @@ function TransactionsTab() {
     const r = parseWaveCsv(text)
     setParsed(r)
     setTypeOverrides({})
+    setManualOverrides({})
   }
 
   const reset = () => {
     setFilename(null)
     setParsed(null)
     setTypeOverrides({})
+    setManualOverrides({})
     setResult(null)
   }
 
@@ -150,16 +164,70 @@ function TransactionsTab() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [parsed, typeOverrides])
 
+  // Build synthetic transaction groups for the user-included skipped rows.
+  // Each becomes a 2-line entry: original line on its existing side, the
+  // counter-account on the opposite side.
+  const manualGroups = useMemo(() => {
+    if (!parsed) return [] as WaveParseResult["groups"]
+    return parsed.ambiguous
+      .map((line, i) => ({ line, i, ov: manualOverrides[i] }))
+      .filter(({ ov }) => ov?.include && ov.counterAccount)
+      .map(({ line, ov }) => {
+        const counter: WaveLine = {
+          account: ov!.counterAccount,
+          date: line.date,
+          description: line.description,
+          side: line.side === "debit" ? "credit" : "debit",
+          amount: line.amount,
+        }
+        const debits = line.side === "debit" ? [line] : [counter]
+        const credits = line.side === "credit" ? [line] : [counter]
+        return {
+          date: line.date,
+          description: line.description || "(manual entry)",
+          amount: line.amount,
+          debits,
+          credits,
+          balanced: true,
+        }
+      })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [parsed, manualOverrides])
+
+  // Counter-account names referenced by manual entries that aren't in the
+  // detected accounts list — we send them to the API so they get created.
+  const extraAccounts = useMemo(() => {
+    if (!parsed) return [] as { name: string; type: AcctType }[]
+    const known = new Set(parsed.accounts.map((a) => a.name.toLowerCase()))
+    const seen = new Set<string>()
+    const out: { name: string; type: AcctType }[] = []
+    for (const g of manualGroups) {
+      for (const l of [...g.debits, ...g.credits]) {
+        const key = l.account.toLowerCase()
+        if (known.has(key) || seen.has(key)) continue
+        seen.add(key)
+        out.push({
+          name: l.account,
+          type: l.account === SUSPENSE_NAME ? "asset" : "asset",
+        })
+      }
+    }
+    return out
+  }, [parsed, manualGroups])
+
   const commit = async () => {
     if (!parsed) return
     setSubmitting(true)
     try {
       const payload = {
-        accounts: parsed.accounts.map((a) => ({
-          name: a.name,
-          type: accountTypeFor(a),
-        })),
-        groups: parsed.groups.map((g) => ({
+        accounts: [
+          ...parsed.accounts.map((a) => ({
+            name: a.name,
+            type: accountTypeFor(a),
+          })),
+          ...extraAccounts,
+        ],
+        groups: [...parsed.groups, ...manualGroups].map((g) => ({
           date: g.date,
           description: g.description,
           amount: g.amount,
@@ -315,11 +383,19 @@ function TransactionsTab() {
         </Card>
       )}
 
+      {parsed && parsed.ambiguous.length > 0 && (
+        <SkippedRowsCard
+          parsed={parsed}
+          manualOverrides={manualOverrides}
+          setManualOverrides={setManualOverrides}
+        />
+      )}
+
       {parsed && (
         <Card>
           <CardHeader>
             <CardTitle className="text-base sm:text-lg">
-              Step 3 — Commit
+              Step {parsed.ambiguous.length > 0 ? 4 : 3} — Commit
             </CardTitle>
             <CardDescription>
               Creates the missing accounts and posts each balanced transaction
@@ -334,11 +410,11 @@ function TransactionsTab() {
               <Button
                 onPress={commit}
                 isPending={submitting}
-                isDisabled={parsed.groups.length === 0}
+                isDisabled={parsed.groups.length + manualGroups.length === 0}
                 className="w-full sm:w-auto"
               >
-                Import {parsed.groups.length} transaction
-                {parsed.groups.length === 1 ? "" : "s"}
+                Import {parsed.groups.length + manualGroups.length} transaction
+                {parsed.groups.length + manualGroups.length === 1 ? "" : "s"}
               </Button>
             )}
           </CardContent>
@@ -484,6 +560,167 @@ function AccountRow({
           </ComboBoxContent>
         </ComboBox>
       </div>
+    </div>
+  )
+}
+
+function SkippedRowsCard({
+  parsed,
+  manualOverrides,
+  setManualOverrides,
+}: {
+  parsed: WaveParseResult
+  manualOverrides: Record<number, ManualOverride>
+  setManualOverrides: React.Dispatch<
+    React.SetStateAction<Record<number, ManualOverride>>
+  >
+}) {
+  const accountOptions = useMemo(() => {
+    const names = parsed.accounts.map((a) => a.name)
+    return [SUSPENSE_NAME, ...names]
+  }, [parsed.accounts])
+
+  const includedCount = Object.values(manualOverrides).filter(
+    (o) => o.include && o.counterAccount,
+  ).length
+
+  const includeAll = (counter: string) => {
+    setManualOverrides((prev) => {
+      const next: typeof prev = {}
+      parsed.ambiguous.forEach((_, i) => {
+        next[i] = { include: true, counterAccount: counter }
+      })
+      return next
+    })
+  }
+  const skipAll = () => setManualOverrides({})
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="text-base sm:text-lg">
+          Step 3 — Review unpaired rows ({parsed.ambiguous.length})
+        </CardTitle>
+        <CardDescription>
+          These lines couldn&apos;t be balanced automatically — usually
+          one-sided opening entries, transfers Wave recorded oddly, or rounding
+          artefacts. Pick a counter-account for each to include it as a
+          single-sided journal entry, or leave it skipped.
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="grid gap-3">
+        <div className="flex flex-wrap items-center gap-2 text-sm">
+          <span className="font-medium">
+            {includedCount} of {parsed.ambiguous.length} included
+          </span>
+          <div className="ms-auto flex gap-2">
+            <Button
+              intent="outline"
+              size="sm"
+              onPress={() => includeAll(SUSPENSE_NAME)}
+            >
+              Include all → Suspense
+            </Button>
+            <Button intent="plain" size="sm" onPress={skipAll}>
+              Skip all
+            </Button>
+          </div>
+        </div>
+        <div className="grid gap-2 sm:grid-cols-[auto_minmax(0,1fr)_auto_minmax(0,1fr)] sm:items-center sm:gap-x-3 sm:gap-y-1.5">
+          <div className="hidden text-xs font-medium text-muted-fg sm:contents">
+            <div>Include</div>
+            <div>Account · Description · Date</div>
+            <div className="text-right">Amount</div>
+            <div>Counter account</div>
+          </div>
+          {parsed.ambiguous.map((line, i) => (
+            <SkippedRow
+              key={i}
+              line={line}
+              ov={manualOverrides[i]}
+              accountOptions={accountOptions}
+              onChange={(next) =>
+                setManualOverrides((prev) => ({ ...prev, [i]: next }))
+              }
+            />
+          ))}
+        </div>
+      </CardContent>
+    </Card>
+  )
+}
+
+function SkippedRow({
+  line,
+  ov,
+  accountOptions,
+  onChange,
+}: {
+  line: WaveLine
+  ov: ManualOverride | undefined
+  accountOptions: string[]
+  onChange: (ov: ManualOverride) => void
+}) {
+  const include = ov?.include ?? false
+  const counter = ov?.counterAccount ?? SUSPENSE_NAME
+  return (
+    <div className="grid gap-2 rounded-md border bg-muted/10 p-3 sm:grid-cols-subgrid sm:col-span-4 sm:items-center sm:rounded-none sm:border-0 sm:bg-transparent sm:p-0">
+      <div className="flex items-center gap-2">
+        <input
+          type="checkbox"
+          aria-label="Include this line"
+          checked={include}
+          onChange={(e) =>
+            onChange({
+              include: e.target.checked,
+              counterAccount: counter,
+            })
+          }
+          className="size-4 cursor-pointer accent-primary"
+        />
+        <span className="text-xs font-medium text-muted-fg sm:hidden">
+          Include
+        </span>
+      </div>
+      <div className="min-w-0">
+        <div className="truncate font-medium">{line.account}</div>
+        <div className="truncate text-xs text-muted-fg">
+          {line.description || "(no description)"} · {line.date}
+        </div>
+      </div>
+      <div className="text-sm tabular-nums sm:text-right">
+        <span
+          className={
+            line.side === "debit"
+              ? "text-success-subtle-fg"
+              : "text-warning-subtle-fg"
+          }
+        >
+          {line.side === "debit" ? "Dr" : "Cr"}{" "}
+          {fmt(line.amount)}
+        </span>
+      </div>
+      <ComboBox
+        aria-label="Counter account"
+        selectedKey={counter}
+        onSelectionChange={(k) =>
+          k &&
+          onChange({
+            include,
+            counterAccount: String(k),
+          })
+        }
+        isDisabled={!include}
+      >
+        <ComboBoxInput placeholder="Counter account" />
+        <ComboBoxContent>
+          {accountOptions.map((name) => (
+            <ComboBoxItem key={name} id={name} textValue={name}>
+              {name}
+            </ComboBoxItem>
+          ))}
+        </ComboBoxContent>
+      </ComboBox>
     </div>
   )
 }
