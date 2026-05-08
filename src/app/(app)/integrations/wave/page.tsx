@@ -9,12 +9,13 @@ import {
   CardTitle,
 } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
+import { Tab, TabList, TabPanel, TabPanels, Tabs } from "@/components/ui/tabs"
 
 export default function WaveIntegrationPage() {
   const router = useRouter()
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex flex-col gap-1">
+      <div className="flex flex-col gap-2">
         <Button
           intent="plain"
           size="sm"
@@ -41,6 +42,37 @@ export default function WaveIntegrationPage() {
         </div>
       </div>
 
+      <Tabs aria-label="Wave import sections" className="w-full">
+        <TabList>
+          <Tab id="transactions">Transactions</Tab>
+          <Tab id="accounts">Accounts</Tab>
+          <Tab id="categories">Categories</Tab>
+        </TabList>
+        <TabPanels className="w-full">
+          <TabPanel id="transactions" className="pt-4 grid gap-4 w-full">
+            <TransactionsTab />
+          </TabPanel>
+          <TabPanel id="accounts" className="pt-4 w-full">
+            <ComingSoon
+              title="Import accounts"
+              copy="Bring your Wave Chart of Accounts over en masse — name, type, subtype, currency. Coming next."
+            />
+          </TabPanel>
+          <TabPanel id="categories" className="pt-4 w-full">
+            <ComingSoon
+              title="Import categories"
+              copy="Map Wave's expense / income classifications onto Books categories. Coming next."
+            />
+          </TabPanel>
+        </TabPanels>
+      </Tabs>
+    </div>
+  )
+}
+
+function TransactionsTab() {
+  return (
+    <>
       <Card>
         <CardHeader>
           <CardTitle className="text-base sm:text-lg">
@@ -94,6 +126,22 @@ export default function WaveIntegrationPage() {
           </Button>
         </CardContent>
       </Card>
-    </div>
+    </>
+  )
+}
+
+function ComingSoon({ title, copy }: { title: string; copy: string }) {
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="text-base sm:text-lg">{title}</CardTitle>
+        <CardDescription>{copy}</CardDescription>
+      </CardHeader>
+      <CardContent>
+        <Button intent="outline" isDisabled className="w-full sm:w-auto">
+          Coming soon
+        </Button>
+      </CardContent>
+    </Card>
   )
 }
