@@ -10,7 +10,6 @@ import {
   CardTitle,
 } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Tab, TabList, TabPanel, TabPanels, Tabs } from "@/components/ui/tabs"
 import { Badge } from "@/components/ui/badge"
 import { Label } from "@/components/ui/field"
 import {
@@ -39,14 +38,16 @@ const ACCT_TYPES = [
 ] as const
 type AcctType = (typeof ACCT_TYPES)[number]
 
+const SUSPENSE_NAME = "Suspense — Wave Import"
+
+type ManualOverride = {
+  include: boolean
+  counterAccount: string
+}
+
 export default function WaveIntegrationPage() {
   const router = useRouter()
   return (
-    // [&_*]:min-w-0 — every descendant inherits min-width:0 so no
-    // intrinsic-content child can push a flex/grid ancestor wider than
-    // the viewport. [&_*]:[overflow-wrap:anywhere] — long unbreakable
-    // strings (filenames, account names) wrap mid-character instead of
-    // forcing layout to grow.
     <div className="grid w-full max-w-full gap-4 overflow-x-clip [&_*]:min-w-0 [&_*]:[overflow-wrap:anywhere]">
       <div className="flex flex-col gap-2">
         <Button
@@ -69,61 +70,30 @@ export default function WaveIntegrationPage() {
               Wave Accounting
             </h1>
             <p className="text-sm text-muted-fg">
-              Bring your books over from Wave in one shot.
+              Import accounts, categories, and transactions from Wave's
+              Account Transactions (General Ledger) CSV in one shot.
             </p>
           </div>
         </div>
       </div>
-
-      <Tabs aria-label="Wave import sections" className="w-full min-w-0">
-        <TabList>
-          <Tab id="transactions">Transactions</Tab>
-          <Tab id="accounts">Accounts</Tab>
-          <Tab id="categories">Categories</Tab>
-        </TabList>
-        <TabPanels className="w-full">
-          <TabPanel id="transactions" className="pt-4 grid gap-4 w-full min-w-0">
-            <TransactionsTab />
-          </TabPanel>
-          <TabPanel id="accounts" className="pt-4 w-full min-w-0">
-            <ComingSoon
-              title="Import accounts"
-              copy="Bring your Wave Chart of Accounts over en masse — name, type, subtype, currency. Coming next."
-            />
-          </TabPanel>
-          <TabPanel id="categories" className="pt-4 w-full min-w-0">
-            <ComingSoon
-              title="Import categories"
-              copy="Map Wave's expense / income classifications onto Books categories. Coming next."
-            />
-          </TabPanel>
-        </TabPanels>
-      </Tabs>
+      <Importer />
     </div>
   )
 }
 
-const SUSPENSE_NAME = "Suspense — Wave Import"
-
-type ManualOverride = {
-  include: boolean
-  counterAccount: string // name of the offsetting account
-}
-
-function TransactionsTab() {
+function Importer() {
   const [filename, setFilename] = useState<string | null>(null)
   const [parsed, setParsed] = useState<WaveParseResult | null>(null)
-  // Account-type overrides keyed by account name (lowercased).
   const [typeOverrides, setTypeOverrides] = useState<Record<string, AcctType>>(
     {},
   )
-  // Per-skipped-row decisions: include + counter account.
   const [manualOverrides, setManualOverrides] = useState<
     Record<number, ManualOverride>
   >({})
   const [submitting, setSubmitting] = useState(false)
   const [result, setResult] = useState<{
     accounts_created: number
+    categories_created: number
     transactions_created: number
     lines_created: number
     skipped: { date: string; description: string; reason: string }[]
@@ -150,6 +120,18 @@ function TransactionsTab() {
   const accountTypeFor = (a: WaveAccountSummary): AcctType =>
     typeOverrides[a.name.toLowerCase()] ?? a.inferredType
 
+  // Categories = income/expense accounts after type overrides.
+  const derivedCategories = useMemo(() => {
+    if (!parsed) return [] as { name: string; kind: "income" | "expense" }[]
+    return parsed.accounts
+      .map((a) => ({ name: a.name, kind: accountTypeFor(a) }))
+      .filter((c) => c.kind === "income" || c.kind === "expense") as {
+      name: string
+      kind: "income" | "expense"
+    }[]
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [parsed, typeOverrides])
+
   const totalsByType = useMemo(() => {
     if (!parsed) return null
     const counts: Record<AcctType, number> = {
@@ -164,9 +146,6 @@ function TransactionsTab() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [parsed, typeOverrides])
 
-  // Build synthetic transaction groups for the user-included skipped rows.
-  // Each becomes a 2-line entry: original line on its existing side, the
-  // counter-account on the opposite side.
   const manualGroups = useMemo(() => {
     if (!parsed) return [] as WaveParseResult["groups"]
     return parsed.ambiguous
@@ -194,8 +173,6 @@ function TransactionsTab() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [parsed, manualOverrides])
 
-  // Counter-account names referenced by manual entries that aren't in the
-  // detected accounts list — we send them to the API so they get created.
   const extraAccounts = useMemo(() => {
     if (!parsed) return [] as { name: string; type: AcctType }[]
     const known = new Set(parsed.accounts.map((a) => a.name.toLowerCase()))
@@ -206,14 +183,13 @@ function TransactionsTab() {
         const key = l.account.toLowerCase()
         if (known.has(key) || seen.has(key)) continue
         seen.add(key)
-        out.push({
-          name: l.account,
-          type: l.account === SUSPENSE_NAME ? "asset" : "asset",
-        })
+        out.push({ name: l.account, type: "asset" })
       }
     }
     return out
   }, [parsed, manualGroups])
+
+  const totalGroups = (parsed?.groups.length ?? 0) + manualGroups.length
 
   const commit = async () => {
     if (!parsed) return
@@ -240,6 +216,7 @@ function TransactionsTab() {
             amount: l.amount,
           })),
         })),
+        categories: derivedCategories,
         reference: `Wave import ${new Date().toISOString().slice(0, 10)}`,
       }
       const res = await api.post<typeof result extends infer T ? T : never>(
@@ -267,53 +244,37 @@ function TransactionsTab() {
   }
 
   return (
-    <>
+    <div className="grid gap-4">
       <Card>
         <CardHeader>
           <CardTitle className="text-base sm:text-lg">
-            Step 1 — Export from Wave
+            1. Export from Wave
           </CardTitle>
           <CardDescription>
-            Wave doesn't expose a transaction-level public API, so the
-            migration uses their CSV export.
+            In Wave, open <span className="font-medium">Reports</span> →{" "}
+            <span className="font-medium">
+              Account Transactions (General Ledger)
+            </span>
+            , set the date range, and click{" "}
+            <span className="font-medium">Export → CSV</span>.
           </CardDescription>
         </CardHeader>
-        <CardContent className="grid gap-3 text-sm">
-          <ol className="grid gap-2 list-decimal pl-5">
-            <li>
-              In Wave, open <span className="font-medium">Reports</span> →{" "}
-              <span className="font-medium">
-                Account Transactions (General Ledger)
-              </span>
-              .
-            </li>
-            <li>
-              Set the <span className="font-medium">Date Range</span> to a
-              custom range covering everything you want to migrate.
-            </li>
-            <li>
-              Click <span className="font-medium">Export → CSV</span>.
-            </li>
-          </ol>
-        </CardContent>
       </Card>
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-base sm:text-lg">
-            Step 2 — Upload &amp; preview
-          </CardTitle>
+          <CardTitle className="text-base sm:text-lg">2. Upload CSV</CardTitle>
           <CardDescription>
-            We parse the CSV in your browser, infer account types, and pair
-            each entry into a balanced transaction. Nothing is written to the
-            database until you confirm.
+            We parse the CSV in your browser and build a complete preview —
+            accounts, categories, transactions. Nothing hits the database
+            until you click Import.
           </CardDescription>
         </CardHeader>
-        <CardContent className="grid gap-4">
+        <CardContent>
           {!parsed ? (
             <FileDrop onFile={onFile} />
           ) : (
-            <div className="grid gap-4">
+            <div className="grid gap-2">
               <div className="flex flex-col gap-2 rounded-md border bg-muted/20 px-3 py-2 text-sm sm:flex-row sm:items-center">
                 <span className="truncate font-medium sm:min-w-0 sm:flex-1">
                   {filename}
@@ -329,19 +290,11 @@ function TransactionsTab() {
               </div>
               <SummaryStats
                 accounts={parsed.accounts.length}
-                groups={parsed.groups.length}
+                categories={derivedCategories.length}
+                groups={totalGroups}
                 ambiguous={parsed.ambiguous.length}
                 totals={totalsByType ?? undefined}
               />
-              {parsed.warnings.length > 0 && (
-                <div className="rounded-md border border-warning/30 bg-warning-subtle px-3 py-2 text-sm text-warning-subtle-fg">
-                  <ul className="list-disc pl-5">
-                    {parsed.warnings.map((w, i) => (
-                      <li key={i}>{w}</li>
-                    ))}
-                  </ul>
-                </div>
-              )}
             </div>
           )}
         </CardContent>
@@ -351,14 +304,15 @@ function TransactionsTab() {
         <Card>
           <CardHeader>
             <CardTitle className="text-base sm:text-lg">
-              Chart of accounts ({parsed.accounts.length})
+              Accounts ({parsed.accounts.length})
             </CardTitle>
             <CardDescription>
-              We infer each account's type from its name and activity. Adjust
-              anything that looks wrong before committing.
+              Each section header in your Wave CSV becomes an account. Type is
+              inferred from the name + activity — adjust anything that looks
+              wrong.
             </CardDescription>
           </CardHeader>
-          <CardContent className="grid gap-3">
+          <CardContent>
             <div className="grid w-full min-w-0 gap-2 sm:grid-cols-[minmax(0,1fr)_auto_auto] sm:gap-x-3 sm:gap-y-1.5 sm:items-center">
               <div className="hidden text-xs font-medium text-muted-fg sm:contents">
                 <div>Name</div>
@@ -383,6 +337,61 @@ function TransactionsTab() {
         </Card>
       )}
 
+      {parsed && derivedCategories.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base sm:text-lg">
+              Categories ({derivedCategories.length})
+            </CardTitle>
+            <CardDescription>
+              Income and expense accounts above are also created as categories
+              for use in the transaction picker. Existing categories are not
+              touched.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="flex flex-wrap gap-1.5">
+              {derivedCategories.map((c) => (
+                <Badge
+                  key={c.name}
+                  intent={c.kind === "income" ? "success" : "secondary"}
+                >
+                  {c.name}
+                </Badge>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {parsed && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base sm:text-lg">
+              Transactions ({totalGroups})
+            </CardTitle>
+            <CardDescription>
+              Each balanced double-entry from the CSV becomes one transaction
+              with its journal lines. Compound entries (e.g. sale → cash + tax)
+              are reconstructed where possible.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="grid gap-2 text-sm">
+            <Row label="Pairs detected automatically" value={parsed.groups.length} />
+            <Row label="Manually included" value={manualGroups.length} />
+            <Row
+              label="Skipped"
+              value={parsed.ambiguous.length - manualGroups.length}
+              intent={
+                parsed.ambiguous.length - manualGroups.length > 0
+                  ? "warning"
+                  : "success"
+              }
+            />
+          </CardContent>
+        </Card>
+      )}
+
       {parsed && parsed.ambiguous.length > 0 && (
         <SkippedRowsCard
           parsed={parsed}
@@ -394,33 +403,34 @@ function TransactionsTab() {
       {parsed && (
         <Card>
           <CardHeader>
-            <CardTitle className="text-base sm:text-lg">
-              Step {parsed.ambiguous.length > 0 ? 4 : 3} — Commit
-            </CardTitle>
+            <CardTitle className="text-base sm:text-lg">3. Import</CardTitle>
             <CardDescription>
-              Creates the missing accounts and posts each balanced transaction
-              with its journal lines. Existing accounts (matched by name) are
-              left alone.
+              Creates the missing accounts and categories, posts each balanced
+              transaction with its journal lines. Existing entries (matched
+              by name) are left alone.
             </CardDescription>
           </CardHeader>
-          <CardContent className="grid gap-3">
+          <CardContent>
             {result ? (
               <ResultSummary result={result} />
             ) : (
               <Button
                 onPress={commit}
                 isPending={submitting}
-                isDisabled={parsed.groups.length + manualGroups.length === 0}
+                isDisabled={totalGroups === 0}
                 className="w-full sm:w-auto"
               >
-                Import {parsed.groups.length + manualGroups.length} transaction
-                {parsed.groups.length + manualGroups.length === 1 ? "" : "s"}
+                Import {parsed.accounts.length} account
+                {parsed.accounts.length === 1 ? "" : "s"} ·{" "}
+                {derivedCategories.length} categor
+                {derivedCategories.length === 1 ? "y" : "ies"} · {totalGroups}{" "}
+                transaction{totalGroups === 1 ? "" : "s"}
               </Button>
             )}
           </CardContent>
         </Card>
       )}
-    </>
+    </div>
   )
 }
 
@@ -463,26 +473,29 @@ function FileDrop({ onFile }: { onFile: (f: File) => void }) {
 
 function SummaryStats({
   accounts,
+  categories,
   groups,
   ambiguous,
   totals,
 }: {
   accounts: number
+  categories: number
   groups: number
   ambiguous: number
   totals?: Record<AcctType, number>
 }) {
   return (
-    <div className="grid w-full min-w-0 gap-2 sm:grid-cols-3">
+    <div className="grid w-full min-w-0 gap-2 sm:grid-cols-4">
       <Stat label="Accounts" value={accounts} />
-      <Stat label="Transactions to create" value={groups} />
+      <Stat label="Categories" value={categories} />
+      <Stat label="Transactions" value={groups} />
       <Stat
-        label="Skipped lines"
+        label="Skipped"
         value={ambiguous}
         intent={ambiguous > 0 ? "warning" : "success"}
       />
       {totals && (
-        <div className="flex w-full min-w-0 flex-wrap gap-1.5 sm:col-span-3">
+        <div className="flex w-full min-w-0 flex-wrap gap-1.5 sm:col-span-4">
           {ACCT_TYPES.filter((t) => totals[t] > 0).map((t) => (
             <Badge key={t} intent="secondary">
               {totals[t]} {titleCase(t)}
@@ -518,6 +531,34 @@ function Stat({
       >
         {value}
       </div>
+    </div>
+  )
+}
+
+function Row({
+  label,
+  value,
+  intent,
+}: {
+  label: string
+  value: number
+  intent?: "warning" | "success"
+}) {
+  return (
+    <div className="flex items-center justify-between gap-2 border-b border-dashed py-1 last:border-b-0 last:pb-0">
+      <span className="text-muted-fg">{label}</span>
+      <span
+        className={
+          "tabular-nums font-medium " +
+          (intent === "warning"
+            ? "text-warning-subtle-fg"
+            : intent === "success"
+              ? "text-success-subtle-fg"
+              : "")
+        }
+      >
+        {value}
+      </span>
     </div>
   )
 }
@@ -585,8 +626,8 @@ function SkippedRowsCard({
   ).length
 
   const includeAll = (counter: string) => {
-    setManualOverrides((prev) => {
-      const next: typeof prev = {}
+    setManualOverrides(() => {
+      const next: Record<number, ManualOverride> = {}
       parsed.ambiguous.forEach((_, i) => {
         next[i] = { include: true, counterAccount: counter }
       })
@@ -599,13 +640,12 @@ function SkippedRowsCard({
     <Card>
       <CardHeader>
         <CardTitle className="text-base sm:text-lg">
-          Step 3 — Review unpaired rows ({parsed.ambiguous.length})
+          Review unpaired rows ({parsed.ambiguous.length})
         </CardTitle>
         <CardDescription>
-          These lines couldn&apos;t be balanced automatically — usually
-          one-sided opening entries, transfers Wave recorded oddly, or rounding
-          artefacts. Pick a counter-account for each to include it as a
-          single-sided journal entry, or leave it skipped.
+          These lines couldn&apos;t be balanced automatically. Pick a
+          counter-account for each to include it as a single-sided journal
+          entry, or leave it skipped.
         </CardDescription>
       </CardHeader>
       <CardContent className="grid gap-3">
@@ -696,19 +736,14 @@ function SkippedRow({
               : "text-warning-subtle-fg"
           }
         >
-          {line.side === "debit" ? "Dr" : "Cr"}{" "}
-          {fmt(line.amount)}
+          {line.side === "debit" ? "Dr" : "Cr"} {fmt(line.amount)}
         </span>
       </div>
       <ComboBox
         aria-label="Counter account"
         selectedKey={counter}
         onSelectionChange={(k) =>
-          k &&
-          onChange({
-            include,
-            counterAccount: String(k),
-          })
+          k && onChange({ include, counterAccount: String(k) })
         }
         isDisabled={!include}
       >
@@ -730,6 +765,7 @@ function ResultSummary({
 }: {
   result: {
     accounts_created: number
+    categories_created: number
     transactions_created: number
     lines_created: number
     skipped: { date: string; description: string; reason: string }[]
@@ -739,8 +775,11 @@ function ResultSummary({
     <div className="grid gap-3">
       <div className="rounded-md border border-success/30 bg-success-subtle px-3 py-2 text-sm text-success-subtle-fg">
         Imported <strong>{result.transactions_created}</strong> transactions
-        and <strong>{result.lines_created}</strong> journal lines. Created{" "}
-        <strong>{result.accounts_created}</strong> new accounts.
+        with <strong>{result.lines_created}</strong> journal lines. Created{" "}
+        <strong>{result.accounts_created}</strong> account
+        {result.accounts_created === 1 ? "" : "s"} and{" "}
+        <strong>{result.categories_created}</strong> categor
+        {result.categories_created === 1 ? "y" : "ies"}.
       </div>
       {result.skipped.length > 0 && (
         <div className="rounded-md border border-warning/30 bg-warning-subtle px-3 py-2 text-sm text-warning-subtle-fg">
@@ -769,19 +808,3 @@ const fmt = (n: number) =>
     style: "currency",
     currency: "USD",
   }).format(n)
-
-function ComingSoon({ title, copy }: { title: string; copy: string }) {
-  return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="text-base sm:text-lg">{title}</CardTitle>
-        <CardDescription>{copy}</CardDescription>
-      </CardHeader>
-      <CardContent>
-        <Button intent="outline" isDisabled className="w-full sm:w-auto">
-          Coming soon
-        </Button>
-      </CardContent>
-    </Card>
-  )
-}

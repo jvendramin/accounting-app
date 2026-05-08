@@ -1,7 +1,13 @@
 import { NextResponse } from "next/server"
 import { eq } from "drizzle-orm"
 import { z } from "zod"
-import { db, accounts, transactions, journalLines } from "@/lib/db"
+import {
+  db,
+  accounts,
+  transactions,
+  journalLines,
+  categories,
+} from "@/lib/db"
 
 export const dynamic = "force-dynamic"
 export const runtime = "nodejs"
@@ -30,9 +36,15 @@ const GroupIn = z.object({
   credits: z.array(LineIn).min(1),
 })
 
+const CategoryIn = z.object({
+  name: z.string().min(1),
+  kind: z.enum(["income", "expense"]),
+})
+
 const Input = z.object({
   accounts: z.array(AccountIn).min(1),
   groups: z.array(GroupIn).default([]),
+  categories: z.array(CategoryIn).default([]),
   reference: z.string().optional(),
 })
 
@@ -113,8 +125,26 @@ export async function POST(req: Request) {
     lineCreated += resolved.length
   }
 
+  // Step 3: upsert categories (income / expense buckets that mirror the
+  // chart of accounts). Dedup by lowercase name; existing rows untouched.
+  const existingCategories = await db.select().from(categories)
+  const catByName = new Set(
+    existingCategories.map((c) => c.name.trim().toLowerCase()),
+  )
+  let catCreated = 0
+  for (const c of body.categories) {
+    const key = c.name.trim().toLowerCase()
+    if (catByName.has(key)) continue
+    await db
+      .insert(categories)
+      .values({ name: c.name.trim(), kind: c.kind })
+    catByName.add(key)
+    catCreated++
+  }
+
   return NextResponse.json({
     accounts_created: accountsCreated.length,
+    categories_created: catCreated,
     transactions_created: txCreated,
     lines_created: lineCreated,
     skipped,
