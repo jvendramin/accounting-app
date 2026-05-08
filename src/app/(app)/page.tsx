@@ -74,6 +74,16 @@ type Suggestion = {
   }>
 }
 
+const TYPE_INTENT: Record<
+  string,
+  "primary" | "secondary" | "warning" | "danger" | "success" | "info"
+> = {
+  deposit: "success",
+  withdrawal: "danger",
+  journal_entry: "info",
+  receipt: "warning",
+}
+
 const niceDate = (iso: string) =>
   new Date(`${iso.slice(0, 10)}T00:00:00`).toLocaleDateString(undefined, {
     month: "short",
@@ -344,7 +354,7 @@ export default function DashboardPage() {
                     </TableCell>
                     <TableCell>
                       <div className="flex flex-wrap items-center gap-1">
-                        <Badge intent="secondary">
+                        <Badge intent={TYPE_INTENT[s.transaction_type] ?? "secondary"}>
                           {titleCase(s.transaction_type)}
                         </Badge>
                         {s.last_this_month && (
@@ -383,7 +393,7 @@ export default function DashboardPage() {
             </ModalHeader>
             <ModalBody className="grid gap-3 text-sm">
               <div className="flex flex-wrap items-center gap-1.5">
-                <Badge intent="secondary">
+                <Badge intent={TYPE_INTENT[activeSuggestion.transaction_type] ?? "secondary"}>
                   {titleCase(activeSuggestion.transaction_type)}
                 </Badge>
                 {activeSuggestion.last_this_month && (
