@@ -842,7 +842,7 @@ function SamplePreview({
   accountTypes: (name: string) => AcctType | undefined
 }) {
   if (groups.length === 0) return null
-  const sample = groups.slice(0, 5)
+  const sample = groups.slice(0, 20)
   // Mirror the server's classifier (route.ts) so the preview badges line
   // up with what actually gets written. Use the *largest* line on each side
   // as the principal so compound entries (sale → cash + tax) classify like
