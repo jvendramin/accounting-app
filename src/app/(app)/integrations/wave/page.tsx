@@ -41,8 +41,8 @@ type AcctType = (typeof ACCT_TYPES)[number]
 export default function WaveIntegrationPage() {
   const router = useRouter()
   return (
-    <div className="flex flex-col gap-4">
-      <div className="flex flex-col gap-2">
+    <div className="flex w-full min-w-0 flex-col gap-4">
+      <div className="flex min-w-0 flex-col gap-2">
         <Button
           intent="plain"
           size="sm"
@@ -69,23 +69,23 @@ export default function WaveIntegrationPage() {
         </div>
       </div>
 
-      <Tabs aria-label="Wave import sections" className="w-full">
+      <Tabs aria-label="Wave import sections" className="w-full min-w-0">
         <TabList>
           <Tab id="transactions">Transactions</Tab>
           <Tab id="accounts">Accounts</Tab>
           <Tab id="categories">Categories</Tab>
         </TabList>
         <TabPanels className="w-full">
-          <TabPanel id="transactions" className="pt-4 grid gap-4 w-full">
+          <TabPanel id="transactions" className="pt-4 grid gap-4 w-full min-w-0">
             <TransactionsTab />
           </TabPanel>
-          <TabPanel id="accounts" className="pt-4 w-full">
+          <TabPanel id="accounts" className="pt-4 w-full min-w-0">
             <ComingSoon
               title="Import accounts"
               copy="Bring your Wave Chart of Accounts over en masse — name, type, subtype, currency. Coming next."
             />
           </TabPanel>
-          <TabPanel id="categories" className="pt-4 w-full">
+          <TabPanel id="categories" className="pt-4 w-full min-w-0">
             <ComingSoon
               title="Import categories"
               copy="Map Wave's expense / income classifications onto Books categories. Coming next."
@@ -281,7 +281,7 @@ function TransactionsTab() {
             </CardDescription>
           </CardHeader>
           <CardContent className="grid gap-3">
-            <div className="grid gap-2 sm:grid-cols-[1fr_auto_auto] sm:gap-x-3 sm:gap-y-1.5 sm:items-center">
+            <div className="grid w-full min-w-0 gap-2 sm:grid-cols-[minmax(0,1fr)_auto_auto] sm:gap-x-3 sm:gap-y-1.5 sm:items-center">
               <div className="hidden text-xs font-medium text-muted-fg sm:contents">
                 <div>Name</div>
                 <div className="text-right">Balance</div>
@@ -387,7 +387,7 @@ function SummaryStats({
   totals?: Record<AcctType, number>
 }) {
   return (
-    <div className="grid gap-2 sm:grid-cols-3">
+    <div className="grid w-full min-w-0 gap-2 sm:grid-cols-3">
       <Stat label="Accounts" value={accounts} />
       <Stat label="Transactions to create" value={groups} />
       <Stat
@@ -396,7 +396,7 @@ function SummaryStats({
         intent={ambiguous > 0 ? "warning" : "success"}
       />
       {totals && (
-        <div className="sm:col-span-3 flex flex-wrap gap-1.5">
+        <div className="flex w-full min-w-0 flex-wrap gap-1.5 sm:col-span-3">
           {ACCT_TYPES.filter((t) => totals[t] > 0).map((t) => (
             <Badge key={t} intent="secondary">
               {totals[t]} {titleCase(t)}
@@ -446,7 +446,7 @@ function AccountRow({
   onTypeChange: (t: AcctType) => void
 }) {
   return (
-    <div className="grid gap-1 rounded-md border bg-muted/10 p-3 sm:grid-cols-subgrid sm:col-span-3 sm:items-center sm:rounded-none sm:border-0 sm:bg-transparent sm:p-0">
+    <div className="grid min-w-0 gap-1 rounded-md border bg-muted/10 p-3 sm:grid-cols-subgrid sm:col-span-3 sm:items-center sm:rounded-none sm:border-0 sm:bg-transparent sm:p-0">
       <div className="min-w-0">
         <div className="truncate font-medium">{acct.name}</div>
         <div className="text-xs text-muted-fg sm:hidden">
