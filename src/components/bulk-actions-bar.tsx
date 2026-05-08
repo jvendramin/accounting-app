@@ -33,7 +33,10 @@ export function BulkActionsBar({
       className={[
         // Anchor to bottom centre, above any browser chrome / safe-area.
         "pointer-events-none fixed inset-x-0 z-40 flex justify-center",
-        "bottom-[calc(env(safe-area-inset-bottom,0)+--spacing(3))]",
+        // iOS Safari overlays the bottom URL bar + home-indicator on top of
+        // env(safe-area-inset-bottom), so the safe-area inset alone isn't
+        // enough — add a generous extra gutter to clear it on phones.
+        "bottom-[calc(env(safe-area-inset-bottom,0)+--spacing(8))] sm:bottom-[calc(env(safe-area-inset-bottom,0)+--spacing(4))]",
         // Width: edge-to-edge with a small inset on phones; capped on
         // larger screens so it doesn't stretch absurdly wide.
         "px-3 sm:px-4",
