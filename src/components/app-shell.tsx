@@ -50,6 +50,7 @@ import {
   IconTag,
   IconActivity,
   IconTax,
+  IconIntegrations,
 } from "@/components/icons"
 import { usePathname, useRouter } from "next/navigation"
 import { useEffect, useState } from "react"
@@ -63,6 +64,7 @@ const titles: Record<string, string> = {
   "/reports/taxes": "Tax Report",
   "/receipts": "Receipts",
   "/import": "Import",
+  "/integrations": "Integrations",
   "/activity": "Activity",
   "/reports/pnl": "Profit & Loss",
   "/reports/balance-sheet": "Balance Sheet",
@@ -86,6 +88,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       "/taxes",
       "/receipts",
       "/import",
+      "/integrations",
+      "/integrations/wave",
       "/activity",
       "/reports/pnl",
       "/reports/balance-sheet",
@@ -177,6 +181,13 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               <SidebarItem href="/import" isCurrent={pathname === "/import"}>
                 <IconUpload />
                 <SidebarLabel>Import</SidebarLabel>
+              </SidebarItem>
+              <SidebarItem
+                href="/integrations"
+                isCurrent={pathname.startsWith("/integrations")}
+              >
+                <IconIntegrations />
+                <SidebarLabel>Integrations</SidebarLabel>
               </SidebarItem>
               <SidebarItem
                 href="/activity"

@@ -19,4 +19,5 @@ export {
   Tag as IconTag,
   Clock as IconActivity,
   Calculator as IconTax,
+  Plug as IconIntegrations,
 } from "lucide-react"
