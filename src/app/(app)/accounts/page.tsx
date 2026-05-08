@@ -85,7 +85,15 @@ export default function AccountsPage() {
       load()
       toast.success(`Deleted ${ids.length}`)
     } else {
-      toast.error("Failed to delete")
+      // Server returns 409 + a JSON body when accounts are still
+      // referenced by journal lines. Surface the real reason instead of
+      // a generic "Failed to delete".
+      let msg = "Failed to delete"
+      try {
+        const body = await res.json()
+        if (typeof body?.message === "string") msg = body.message
+      } catch {}
+      toast.error(msg)
     }
   }
 
