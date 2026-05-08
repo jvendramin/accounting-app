@@ -41,8 +41,13 @@ type AcctType = (typeof ACCT_TYPES)[number]
 export default function WaveIntegrationPage() {
   const router = useRouter()
   return (
-    <div className="flex w-full min-w-0 max-w-full flex-col gap-4 overflow-x-hidden">
-      <div className="flex min-w-0 flex-col gap-2">
+    // [&_*]:min-w-0 — every descendant inherits min-width:0 so no
+    // intrinsic-content child can push a flex/grid ancestor wider than
+    // the viewport. [&_*]:[overflow-wrap:anywhere] — long unbreakable
+    // strings (filenames, account names) wrap mid-character instead of
+    // forcing layout to grow.
+    <div className="grid w-full max-w-full gap-4 overflow-x-clip [&_*]:min-w-0 [&_*]:[overflow-wrap:anywhere]">
+      <div className="flex flex-col gap-2">
         <Button
           intent="plain"
           size="sm"
@@ -241,12 +246,17 @@ function TransactionsTab() {
             <FileDrop onFile={onFile} />
           ) : (
             <div className="grid gap-4">
-              <div className="flex flex-wrap items-center gap-2 rounded-md border bg-muted/20 px-3 py-2 text-sm">
-                <span className="font-medium truncate min-w-0 flex-1">
+              <div className="flex flex-col gap-2 rounded-md border bg-muted/20 px-3 py-2 text-sm sm:flex-row sm:items-center">
+                <span className="truncate font-medium sm:min-w-0 sm:flex-1">
                   {filename}
                 </span>
-                <Button intent="plain" size="sm" onPress={reset}>
-                  Choose a different file
+                <Button
+                  intent="plain"
+                  size="sm"
+                  onPress={reset}
+                  className="self-start sm:self-auto"
+                >
+                  Change file
                 </Button>
               </div>
               <SummaryStats
