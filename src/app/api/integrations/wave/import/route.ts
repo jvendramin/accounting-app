@@ -110,21 +110,29 @@ export async function POST(req: Request) {
       continue
     }
     const total = g.debits.reduce((s, l) => s + l.amount, 0)
-    // Determine a coarse transaction_type from the line shape:
-    // - 2-line entry where the debit-side account is `asset` and the
-    //   credit-side is `income` → deposit (money in to the asset).
-    // - 2-line entry where the credit-side account is `asset` and the
-    //   debit-side is `expense` → withdrawal (money out of the asset).
-    // - Everything else (compound entries, transfers, equity moves) →
-    //   journal_entry, which the rest of the app already renders.
+    // Determine a coarse transaction_type from the line shape, using the
+    // *largest* line on each side as the principal account so compound
+    // entries (sale → cash + tax, purchase → expense + GST input) still
+    // classify correctly:
+    // - principal debit is asset AND any credit is income → deposit
+    //   (money flowing INTO the asset, with income recognised)
+    // - principal credit is asset AND any debit is expense → withdrawal
+    //   (money flowing OUT of the asset, against an expense)
+    // - everything else (asset↔asset transfers, equity moves, refunds
+    //   without an obvious principal) → journal_entry
+    const principal = (lines: typeof g.debits) =>
+      lines.reduce((a, b) => (b.amount > a.amount ? b : a))
+    const typeOf = (acct: string) =>
+      typeByName.get(acct.trim().toLowerCase())
+    const drPrincipal = typeOf(principal(g.debits).account)
+    const crPrincipal = typeOf(principal(g.credits).account)
+    const drTypes = g.debits.map((l) => typeOf(l.account))
+    const crTypes = g.credits.map((l) => typeOf(l.account))
     let txnType = "journal_entry"
-    if (g.debits.length === 1 && g.credits.length === 1) {
-      const drType = typeByName.get(g.debits[0].account.trim().toLowerCase())
-      const crType = typeByName.get(g.credits[0].account.trim().toLowerCase())
-      if (drType === "asset" && crType === "income") txnType = "deposit"
-      else if (crType === "asset" && drType === "expense")
-        txnType = "withdrawal"
-    }
+    if (drPrincipal === "asset" && crTypes.includes("income"))
+      txnType = "deposit"
+    else if (crPrincipal === "asset" && drTypes.includes("expense"))
+      txnType = "withdrawal"
     const [tx] = await db
       .insert(transactions)
       .values({

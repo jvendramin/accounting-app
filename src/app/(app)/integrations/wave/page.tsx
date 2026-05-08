@@ -843,12 +843,20 @@ function SamplePreview({
 }) {
   if (groups.length === 0) return null
   const sample = groups.slice(0, 5)
+  // Mirror the server's classifier (route.ts) so the preview badges line
+  // up with what actually gets written. Use the *largest* line on each side
+  // as the principal so compound entries (sale → cash + tax) classify like
+  // the underlying business event, not like a journal entry.
   const classify = (g: WaveParseResult["groups"][number]) => {
-    if (g.debits.length !== 1 || g.credits.length !== 1) return "journal_entry"
-    const dr = accountTypes(g.debits[0].account)
-    const cr = accountTypes(g.credits[0].account)
-    if (dr === "asset" && cr === "income") return "deposit"
-    if (cr === "asset" && dr === "expense") return "withdrawal"
+    const principal = (lines: typeof g.debits) =>
+      lines.reduce((a, b) => (b.amount > a.amount ? b : a))
+    const drPrincipal = accountTypes(principal(g.debits).account)
+    const crPrincipal = accountTypes(principal(g.credits).account)
+    const crTypes = g.credits.map((l) => accountTypes(l.account))
+    const drTypes = g.debits.map((l) => accountTypes(l.account))
+    if (drPrincipal === "asset" && crTypes.includes("income")) return "deposit"
+    if (crPrincipal === "asset" && drTypes.includes("expense"))
+      return "withdrawal"
     return "journal_entry"
   }
   const intent = (t: string) =>
