@@ -74,13 +74,17 @@ const splitCsvRow = (row: string): string[] => {
   return out
 }
 
-// Heuristic: name + activity → account type.
+// Heuristic: name + activity → account type. Order matters — the most
+// specific words (fees, expense, tax) win first so obvious expenses can't
+// be mis-classified as assets just because their name contains a bank
+// keyword (e.g. "RBC Fees", "Bank Service Charges").
 function inferAccountType(
   name: string,
   endingDebit: number,
   endingCredit: number,
 ): WaveAccountSummary["inferredType"] {
   const n = name.toLowerCase()
+
   // Liability-ish names
   if (
     /payable/.test(n) ||
@@ -88,15 +92,32 @@ function inferAccountType(
     /^gst$|^hst$|^pst$|tax payable/.test(n)
   )
     return "liability"
-  // Equity-ish names
-  if (/(retained earnings|owner.*equity|capital|drawings|dividends paid)/.test(n))
+
+  // Equity-ish names — matched before income so "Common Shares" /
+  // "Retained Earnings" don't fall into the income bucket.
+  if (
+    /retained earnings|owner.*equity|capital|drawings|dividends paid|common shares?|paid[- ]?in/.test(
+      n,
+    )
+  )
     return "equity"
+
+  // Expense markers — explicit "expense / fee / charge / tax(es)" beats
+  // any bank-name match below ("RBC Fees" → expense, not asset).
+  if (
+    /\b(expenses?|fees?|charges?)\b/.test(n) ||
+    /\btax(es)?\b/.test(n) ||
+    /processing fee|service charge/.test(n)
+  )
+    return "expense"
+
   // Income-ish names
   if (
     /sales|revenue|income(?!.*expense)/.test(n) ||
     /cashback|refund|interest income/.test(n)
   )
     return "income"
+
   // Cash/bank
   if (
     /\b(rbc|cibc|td|bmo|chase|wells|wells fargo|bank|cash|float|venn|square|gusto|stripe|paypal|wise)\b/.test(
@@ -104,8 +125,8 @@ function inferAccountType(
     )
   )
     return "asset"
+
   // Activity-based fallback
-  // Mostly debits and not bank-like → expense
   if (endingDebit > 0 && endingCredit === 0) return "expense"
   if (endingCredit > 0 && endingDebit === 0) return "income"
   return endingBalance(endingDebit, endingCredit) >= 0 ? "asset" : "liability"
