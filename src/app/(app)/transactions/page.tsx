@@ -80,11 +80,11 @@ import {
 const TYPES = ["deposit", "withdrawal", "journal_entry", "receipt"] as const
 const TYPE_INTENT: Record<
   string,
-  "primary" | "secondary" | "warning" | "danger" | "success"
+  "primary" | "secondary" | "warning" | "danger" | "success" | "info"
 > = {
   deposit: "success",
   withdrawal: "danger",
-  journal_entry: "primary",
+  journal_entry: "info",
   receipt: "warning",
 }
 

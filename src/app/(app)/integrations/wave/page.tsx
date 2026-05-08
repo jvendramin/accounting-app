@@ -864,7 +864,7 @@ function SamplePreview({
       ? "success"
       : t === "withdrawal"
         ? "danger"
-        : "primary"
+        : "info"
   return (
     <div className="grid gap-2">
       <div className="text-xs font-medium text-muted-fg">
