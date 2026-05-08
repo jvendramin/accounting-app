@@ -446,12 +446,17 @@ export function SettingsModal({
                 </ComboBox>
                 <NumberField
                   value={Number(prefs.app.items_per_page ?? 50)}
-                  onChange={(v) =>
-                    set.app(
-                      "items_per_page",
-                      String(Number.isFinite(v) ? v : 50),
-                    )
-                  }
+                  onChange={(v) => {
+                    const n = Number.isFinite(v) ? v : 50
+                    set.app("items_per_page", String(n))
+                    // Mirror to localStorage so every table picks it up
+                    // immediately without a session reload.
+                    if (typeof window !== "undefined")
+                      window.localStorage.setItem(
+                        "books:items_per_page",
+                        String(n),
+                      )
+                  }}
                   minValue={10}
                   maxValue={500}
                   step={10}

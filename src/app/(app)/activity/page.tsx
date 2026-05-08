@@ -27,6 +27,12 @@ import { parseDate } from "@internationalized/date"
 import { IconX } from "@/components/icons"
 import { titleCase } from "@/lib/format"
 import { api } from "@/lib/api"
+import {
+  TablePagination,
+  paginate,
+  usePage,
+  usePageSize,
+} from "@/components/table-pagination"
 
 type AuditRow = {
   id: number
@@ -100,6 +106,7 @@ export default function ActivityPage() {
   const [from, setFrom] = useState("")
   const [to, setTo] = useState("")
   const [showFilters, setShowFilters] = useState(false)
+  const [pageSize, setPageSize] = usePageSize()
   const [sortDescriptor, setSortDescriptor] = useState<SortDesc>({
     column: "changed_at",
     direction: "descending",
@@ -139,6 +146,15 @@ export default function ActivityPage() {
     })
   }, [rows, q, op, tableName, from, to])
 
+  const [page, setPage] = usePage([
+    q,
+    op,
+    tableName,
+    from,
+    to,
+    sortDescriptor,
+    pageSize,
+  ])
   const sorted = useMemo(() => {
     const { column, direction } = sortDescriptor
     return [...filtered].sort((a, b) => {
@@ -291,7 +307,7 @@ export default function ActivityPage() {
             </TableColumn>
           </IntentTableHeader>
           <TableBody
-            items={sorted}
+            items={paginate(sorted, page, pageSize)}
             renderEmptyState={() => (
               <div className="p-8 text-center text-sm text-muted-fg">
                 {loading ? "Loading…" : "No activity."}
@@ -317,6 +333,13 @@ export default function ActivityPage() {
             )}
           </TableBody>
         </Table>
+        <TablePagination
+          page={page}
+          pageSize={pageSize}
+          total={sorted.length}
+          onPageChange={setPage}
+          onPageSizeChange={setPageSize}
+        />
       </CardContent>
     </Card>
   )

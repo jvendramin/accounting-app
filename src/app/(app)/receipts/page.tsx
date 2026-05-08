@@ -32,6 +32,12 @@ import {
 import { IconPlus } from "@/components/icons"
 import { toast } from "sonner"
 import { BulkActionsBar, selectedIds } from "@/components/bulk-actions-bar"
+import {
+  TablePagination,
+  paginate,
+  usePage,
+  usePageSize,
+} from "@/components/table-pagination"
 import type { Selection } from "react-aria-components"
 import { auth } from "@/lib/auth"
 import { api, type Receipt } from "@/lib/api"
@@ -172,6 +178,8 @@ export default function ReceiptsPage() {
   }
 
   const [selection, setSelection] = useState<Selection>(new Set())
+  const [pageSize, setPageSize] = usePageSize()
+  const [page, setPage] = usePage([sortDescriptor, pageSize])
   const bulkDelete = async () => {
     const ids = selectedIds(selection, rows)
     if (ids.length === 0) return
@@ -253,7 +261,7 @@ export default function ReceiptsPage() {
             </TableColumn>
           </IntentTableHeader>
           <TableBody
-            items={rows}
+            items={paginate(rows, page, pageSize)}
             renderEmptyState={() => (
               <div className="p-8 text-center text-sm text-muted-fg">
                 No receipts yet.
@@ -301,6 +309,13 @@ export default function ReceiptsPage() {
             )}
           </TableBody>
         </Table>
+        <TablePagination
+          page={page}
+          pageSize={pageSize}
+          total={rows.length}
+          onPageChange={setPage}
+          onPageSizeChange={setPageSize}
+        />
       </CardContent>
 
       <ModalContent

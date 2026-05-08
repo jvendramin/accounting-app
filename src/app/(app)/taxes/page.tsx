@@ -35,6 +35,12 @@ import { Badge } from "@/components/ui/badge"
 import { IconPlus } from "@/components/icons"
 import { toast } from "sonner"
 import { BulkActionsBar, selectedIds } from "@/components/bulk-actions-bar"
+import {
+  TablePagination,
+  paginate,
+  usePage,
+  usePageSize,
+} from "@/components/table-pagination"
 import { NumberField, NumberInput } from "@/components/ui/number-field"
 import { Switch } from "@/components/ui/switch"
 import type { Selection } from "react-aria-components"
@@ -57,6 +63,7 @@ export default function TaxesPage() {
   const [editing, setEditing] = useState<Partial<Tax> | null>(null)
   const [showFilters, setShowFilters] = useState(false)
   const [selection, setSelection] = useState<Selection>(new Set())
+  const [pageSize, setPageSize] = usePageSize()
   const bulkDelete = async () => {
     const ids = selectedIds(selection, rows)
     if (ids.length === 0) return
@@ -98,6 +105,7 @@ export default function TaxesPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams])
 
+  const [page, setPage] = usePage([q, pageSize])
   const filtered = useMemo(() => {
     const ql = q.trim().toLowerCase()
     return rows.filter((r) =>
@@ -237,7 +245,7 @@ export default function TaxesPage() {
               </TableColumn>
             </IntentTableHeader>
             <TableBody
-              items={filtered}
+              items={paginate(filtered, page, pageSize)}
               renderEmptyState={() => (
                 <div className="p-8 text-center text-sm text-muted-fg">
                   {loading ? "Loading…" : "No taxes."}
@@ -286,6 +294,13 @@ export default function TaxesPage() {
               )}
             </TableBody>
           </Table>
+          <TablePagination
+            page={page}
+            pageSize={pageSize}
+            total={filtered.length}
+            onPageChange={setPage}
+            onPageSizeChange={setPageSize}
+          />
         </CardContent>
       </Card>
 

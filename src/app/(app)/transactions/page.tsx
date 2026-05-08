@@ -62,6 +62,12 @@ import { toast } from "sonner"
 import { fmtMoney, titleCase } from "@/lib/format"
 import { api, type Account, type Txn } from "@/lib/api"
 import { BulkActionsBar, selectedIds } from "@/components/bulk-actions-bar"
+import {
+  TablePagination,
+  paginate,
+  usePage,
+  usePageSize,
+} from "@/components/table-pagination"
 import { NumberField, NumberInput } from "@/components/ui/number-field"
 import { CurrencyDollarIcon } from "@heroicons/react/20/solid"
 import type { Selection } from "react-aria-components"
@@ -322,6 +328,19 @@ export default function TransactionsPage() {
   const [tab, setTab] = useState<"simple" | "journal">("simple")
   const [editingId, setEditingId] = useState<number | null>(null)
   const [selection, setSelection] = useState<Selection>(new Set())
+  const [pageSize, setPageSize] = usePageSize()
+  const [page, setPage] = usePage([
+    debouncedQ,
+    type,
+    from,
+    to,
+    sortDescriptor,
+    pageSize,
+  ])
+  const visibleRows = useMemo(
+    () => paginate(rows, page, pageSize),
+    [rows, page, pageSize],
+  )
   const bulkDelete = async () => {
     const ids = selectedIds(selection, rows)
     if (ids.length === 0) return
@@ -831,7 +850,7 @@ export default function TransactionsPage() {
               </TableColumn>
             </IntentTableHeader>
             <TableBody
-              items={rows}
+              items={visibleRows}
               renderEmptyState={() => (
                 <div className="p-8 text-center text-sm text-muted-fg">
                   {loading ? "Loading…" : "No transactions."}
@@ -877,6 +896,13 @@ export default function TransactionsPage() {
               }}
             </TableBody>
           </Table>
+          <TablePagination
+            page={page}
+            pageSize={pageSize}
+            total={rows.length}
+            onPageChange={setPage}
+            onPageSizeChange={setPageSize}
+          />
         </CardContent>
       </Card>
 

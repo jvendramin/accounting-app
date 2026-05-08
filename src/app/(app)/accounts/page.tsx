@@ -42,6 +42,12 @@ import { IconPlus } from "@/components/icons"
 import { toast } from "sonner"
 import { fmtMoney, titleCase } from "@/lib/format"
 import { BulkActionsBar, selectedIds } from "@/components/bulk-actions-bar"
+import {
+  TablePagination,
+  paginate,
+  usePage,
+  usePageSize,
+} from "@/components/table-pagination"
 import type { Selection } from "react-aria-components"
 
 type Account = {
@@ -70,6 +76,7 @@ export default function AccountsPage() {
     direction: "ascending",
   })
   const [selection, setSelection] = useState<Selection>(new Set())
+  const [pageSize, setPageSize] = usePageSize()
   const bulkDelete = async () => {
     const ids = selectedIds(selection, rows)
     if (ids.length === 0) return
@@ -122,6 +129,7 @@ export default function AccountsPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams])
 
+  const [page, setPage] = usePage([q, type, sortDescriptor, pageSize])
   const filtered = useMemo(() => {
     const ql = q.trim().toLowerCase()
     let out = rows.filter((r) => {
@@ -297,7 +305,7 @@ export default function AccountsPage() {
               </TableColumn>
             </IntentTableHeader>
             <TableBody
-              items={filtered}
+              items={paginate(filtered, page, pageSize)}
               renderEmptyState={() => (
                 <div className="p-8 text-center text-sm text-muted-fg">
                   {loading ? "Loading…" : "No accounts."}
@@ -341,6 +349,13 @@ export default function AccountsPage() {
               )}
             </TableBody>
           </Table>
+          <TablePagination
+            page={page}
+            pageSize={pageSize}
+            total={filtered.length}
+            onPageChange={setPage}
+            onPageSizeChange={setPageSize}
+          />
         </CardContent>
       </Card>
 
