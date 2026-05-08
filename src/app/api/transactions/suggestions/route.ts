@@ -5,10 +5,11 @@ import { db } from "@/lib/db"
 export const dynamic = "force-dynamic"
 
 // Suggestions: rows from the same calendar week, one month ago, that the user
-// has NOT dismissed for the current week. We *do not* hide rows already
-// entered this month — instead we mark them so the UI can show them with an
-// "Already created this month" cue. Hiding them was confusing: users wanted
-// to keep seeing the recurring pattern even after acting on it.
+// has NOT dismissed for the current week. We filter to:
+//   1. Truly recurring patterns — descriptions seen more than once historically
+//      (occurrences > 1). One-off transactions don't get suggested.
+//   2. Not yet cloned this month — if a transaction with the same description
+//      already exists in the current month, the suggestion is hidden.
 export async function GET() {
   // 10 business days ≈ 14 calendar days. We anchor at "one month ago" and
   // include any transactions on or before the anchor, but no further back
@@ -28,11 +29,6 @@ export async function GET() {
         where lower(t2.description) = lower(t.description)
           and t2.date <= t.date
       ) as occurrences,
-      (
-        select max(t2.date) from transactions t2
-        where lower(t2.description) = lower(t.description)
-          and t2.date >= date_trunc('month', current_date)
-      ) as last_this_month,
       coalesce(json_agg(json_build_object(
         'id', jl.id,
         'account_id', jl.account_id,
@@ -54,14 +50,23 @@ export async function GET() {
         where ds.source_transaction_id = t.id
           and ds.dismissed_for_week_start = tw.current_week
       )
+      -- Recurring filter: at least one OTHER transaction with the same
+      -- description must exist in history (so the count on/before the
+      -- suggestion's date is > 1).
+      and (
+        select count(*) from transactions t2
+        where lower(t2.description) = lower(t.description)
+          and t2.date <= t.date
+      ) > 1
+      -- Hide if the user already cloned this month — i.e. there's any
+      -- transaction with the same description dated within this month.
+      and not exists (
+        select 1 from transactions t3
+        where lower(t3.description) = lower(t.description)
+          and t3.date >= date_trunc('month', current_date)
+      )
     group by t.id, tw.current_week
-    -- Already-done items go to the bottom; recurring count breaks ties.
-    order by (case when (
-      select count(*) from transactions t2
-      where lower(t2.description) = lower(t.description)
-        and t2.date >= date_trunc('month', current_date)
-    ) > 0 then 1 else 0 end) asc,
-      t.date asc, t.id asc
+    order by t.date asc, t.id asc
     limit 20
   `)
   return NextResponse.json(rows.rows)
