@@ -215,6 +215,14 @@ export default function TransactionsPage() {
   // Close-confirm prompt: shown when the user tries to dismiss the modal
   // with unsaved progress. Choices: save as draft, or discard.
   const [closePrompt, setClosePrompt] = useState(false)
+  // Type-conversion preview: when set, a confirm modal shows the
+  // before → after badges and reassures the user that journal lines
+  // and amounts are preserved (the conversion is purely a relabel).
+  const [convertTarget, setConvertTarget] = useState<{
+    txn: Txn
+    newType: "deposit" | "withdrawal" | "journal_entry"
+  } | null>(null)
+  const [converting, setConverting] = useState(false)
   const [savingDraft, setSavingDraft] = useState(false)
   // The draft id (if any) the current modal session was resumed from. Cleared
   // on reset/new; on successful save we delete this row so drafts don't
@@ -644,6 +652,30 @@ export default function TransactionsPage() {
     }
   }
 
+  const confirmConvert = async () => {
+    if (!convertTarget) return
+    const { txn, newType } = convertTarget
+    setConverting(true)
+    try {
+      await api.put(`/api/transactions/${txn.id}`, {
+        transaction: { transaction_type: newType },
+      })
+      invalidateCachePrefix("transactions:")
+      invalidateCache(
+        "dashboard:reports/profit_and_loss",
+        "dashboard:reports/cashflow",
+      )
+      refetchTxns()
+      toast.success(
+        `Converted to ${titleCase(newType.replace("_", " "))}`,
+      )
+      setConvertTarget(null)
+    } catch {
+    } finally {
+      setConverting(false)
+    }
+  }
+
   const remove = async (id: number) => {
     if (!confirm("Delete this transaction?")) return
     try {
@@ -881,6 +913,23 @@ export default function TransactionsPage() {
                           <MenuContent aria-label="Actions" placement="left top">
                             <MenuItem onAction={() => editTxn(t)}>Edit</MenuItem>
                             <MenuSeparator />
+                            {(["deposit", "withdrawal", "journal_entry"] as const)
+                              .filter(
+                                (k) =>
+                                  k !==
+                                  ((t as any).transaction_type ?? t.transactionType),
+                              )
+                              .map((k) => (
+                                <MenuItem
+                                  key={k}
+                                  onAction={() =>
+                                    setConvertTarget({ txn: t, newType: k })
+                                  }
+                                >
+                                  Convert to {titleCase(k.replace("_", " "))}
+                                </MenuItem>
+                              ))}
+                            <MenuSeparator />
                             <MenuItem
                               intent="danger"
                               onAction={() => remove(t.id)}
@@ -927,6 +976,42 @@ export default function TransactionsPage() {
             <ModalTitle>
               {editingId ? "Edit Transaction" : "Add Transaction"}
             </ModalTitle>
+            {editingId && (() => {
+              const cur = rows.find((r) => r.id === editingId)
+              if (!cur) return null
+              const curType =
+                ((cur as any).transaction_type ?? cur.transactionType) as
+                  | "deposit"
+                  | "withdrawal"
+                  | "journal_entry"
+              return (
+                <div className="mt-1 flex items-center gap-2 text-sm">
+                  <span className="text-muted-fg">Type:</span>
+                  <Badge intent={TYPE_INTENT[curType] ?? "secondary"}>
+                    {titleCase(curType.replace("_", " "))}
+                  </Badge>
+                  <Menu>
+                    <MenuTrigger>
+                      <Button intent="outline" size="xs">Change</Button>
+                    </MenuTrigger>
+                    <MenuContent aria-label="Convert type">
+                      {(["deposit", "withdrawal", "journal_entry"] as const)
+                        .filter((k) => k !== curType)
+                        .map((k) => (
+                          <MenuItem
+                            key={k}
+                            onAction={() =>
+                              setConvertTarget({ txn: cur, newType: k })
+                            }
+                          >
+                            Convert to {titleCase(k.replace("_", " "))}
+                          </MenuItem>
+                        ))}
+                    </MenuContent>
+                  </Menu>
+                </div>
+              )
+            })()}
           </ModalHeader>
           <ModalBody>
             {aiReason && (
@@ -1456,6 +1541,91 @@ export default function TransactionsPage() {
             Save as draft
           </Button>
         </ModalFooter>
+      </ModalContent>
+
+      {/* Convert-type preview: shows before → after with the
+          journal-line breakdown intact, since conversion is a
+          relabel that never touches lines or amounts. */}
+      <ModalContent
+        size="lg"
+        role="alertdialog"
+        isOpen={convertTarget !== null}
+        onOpenChange={(v) => {
+          if (!v && !converting) setConvertTarget(null)
+        }}
+      >
+        {convertTarget && (() => {
+          const t = convertTarget.txn
+          const curType = ((t as any).transaction_type ?? t.transactionType) as
+            | "deposit"
+            | "withdrawal"
+            | "journal_entry"
+          return (
+            <>
+              <ModalHeader>
+                <ModalTitle>Convert transaction type</ModalTitle>
+              </ModalHeader>
+              <ModalBody className="grid gap-4 text-sm">
+                <div className="flex flex-wrap items-center gap-2">
+                  <Badge intent={TYPE_INTENT[curType] ?? "secondary"}>
+                    {titleCase(curType.replace("_", " "))}
+                  </Badge>
+                  <span className="text-muted-fg">→</span>
+                  <Badge
+                    intent={TYPE_INTENT[convertTarget.newType] ?? "secondary"}
+                  >
+                    {titleCase(convertTarget.newType.replace("_", " "))}
+                  </Badge>
+                </div>
+                <div className="rounded-lg border bg-muted/30 px-3 py-2.5">
+                  <div className="font-medium">{t.description}</div>
+                  <div className="text-xs text-muted-fg">
+                    {t.date} · {fmtMoney(t.amount)}
+                  </div>
+                </div>
+                <div>
+                  <div className="mb-1.5 text-xs font-medium text-muted-fg">
+                    Journal lines (preserved)
+                  </div>
+                  <div className="grid gap-1">
+                    {t.journal_lines.map((l) => (
+                      <div
+                        key={l.id}
+                        className="flex items-center justify-between rounded-md border px-2.5 py-1.5"
+                      >
+                        <span className="truncate">
+                          {(l as any).account_name ??
+                            `Account #${l.account_id}`}
+                        </span>
+                        <span className="tabular-nums">
+                          {Number(l.debit) > 0
+                            ? `Dr ${fmtMoney(l.debit)}`
+                            : `Cr ${fmtMoney(l.credit)}`}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+                <p className="text-xs text-muted-fg">
+                  This is a relabel — debits, credits, accounts, and amounts
+                  stay exactly as shown above.
+                </p>
+              </ModalBody>
+              <ModalFooter>
+                <Button
+                  intent="outline"
+                  onPress={() => setConvertTarget(null)}
+                  isDisabled={converting}
+                >
+                  Cancel
+                </Button>
+                <Button onPress={confirmConvert} isPending={converting}>
+                  Convert
+                </Button>
+              </ModalFooter>
+            </>
+          )
+        })()}
       </ModalContent>
     </div>
   )
