@@ -215,21 +215,16 @@ export function parseWaveCsv(csv: string): WaveParseResult {
   }
 
   const groups: WaveTransactionGroup[] = []
-  const ambiguous: WaveLine[] = []
+  const leftover: WaveLine[] = [] // didn't pair in the (date, |amount|) pass
+
+  // ---- Pass 1: equal-amount debit ↔ credit pairing ----
   for (const arr of buckets.values()) {
-    // Within the bucket separate by side, then greedy-match by normalised description.
     const debits = arr.filter((l) => l.side === "debit").slice()
     const credits = arr.filter((l) => l.side === "credit").slice()
     while (debits.length > 0 && credits.length > 0) {
       const d = debits[0]
-      // Prefer the credit-row whose normalised description matches d's.
       let cIdx = credits.findIndex((c) => norm(c.description) === norm(d.description))
-      if (cIdx === -1) {
-        // Loose pair: any credit with the same amount/date — most Wave
-        // transfers are single debit ↔ single credit, so this is usually
-        // unambiguous. If multiple, just take the first.
-        cIdx = 0
-      }
+      if (cIdx === -1) cIdx = 0
       const c = credits.splice(cIdx, 1)[0]
       debits.shift()
       groups.push({
@@ -241,13 +236,57 @@ export function parseWaveCsv(csv: string): WaveParseResult {
         balanced: true,
       })
     }
-    for (const l of debits) ambiguous.push(l)
-    for (const l of credits) ambiguous.push(l)
+    leftover.push(...debits, ...credits)
   }
 
+  // ---- Pass 2: per-day compound JE balancing ----
+  // Wave records compound entries (e.g. Sale: Cash dr 1000 / Sales cr 850 /
+  // GST cr 150) as multiple rows whose individual amounts don't pair, but
+  // whose totals balance within the day. Group leftovers by date; if the
+  // day's debits sum equals the day's credits sum (within 1¢), bundle all
+  // those rows into one compound JE.
+  const byDate = new Map<string, WaveLine[]>()
+  for (const ln of leftover) {
+    const arr = byDate.get(ln.date)
+    if (arr) arr.push(ln)
+    else byDate.set(ln.date, [ln])
+  }
+  const ambiguous: WaveLine[] = []
+  for (const [date, arr] of byDate) {
+    const debits = arr.filter((l) => l.side === "debit")
+    const credits = arr.filter((l) => l.side === "credit")
+    const drTotal = debits.reduce((s, l) => s + l.amount, 0)
+    const crTotal = credits.reduce((s, l) => s + l.amount, 0)
+    if (
+      debits.length > 0 &&
+      credits.length > 0 &&
+      Math.abs(drTotal - crTotal) < 0.01
+    ) {
+      // Use the description of the largest line for the parent transaction
+      // (compound entries usually have one anchor line).
+      const anchor = arr.reduce((a, b) => (b.amount > a.amount ? b : a))
+      groups.push({
+        date,
+        description: anchor.description || "(compound entry)",
+        amount: drTotal,
+        debits,
+        credits,
+        balanced: true,
+      })
+    } else {
+      ambiguous.push(...arr)
+    }
+  }
+
+  // ---- Warnings ----
+  // Phase 1+2 should resolve the vast majority of Wave exports. Only flag
+  // when the remainder is genuinely orphaned (e.g. opening balances posted
+  // outside the date range, manual one-sided journal entries).
   if (ambiguous.length > 0) {
     warnings.push(
-      `${ambiguous.length} line(s) could not be paired automatically and will need a Suspense account.`,
+      `${ambiguous.length} line(s) on ${
+        new Set(ambiguous.map((l) => l.date)).size
+      } day(s) couldn't be balanced automatically — usually one-sided opening entries or rounding artefacts. They'll be skipped on import; you can re-create them manually if needed.`,
     )
   }
 

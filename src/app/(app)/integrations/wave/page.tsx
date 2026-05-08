@@ -401,7 +401,7 @@ function SummaryStats({
       <Stat label="Accounts" value={accounts} />
       <Stat label="Transactions to create" value={groups} />
       <Stat
-        label="Ambiguous lines"
+        label="Skipped lines"
         value={ambiguous}
         intent={ambiguous > 0 ? "warning" : "success"}
       />
