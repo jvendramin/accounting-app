@@ -33,7 +33,16 @@ import {
 import { api } from "@/lib/api"
 import { fmtMoney, titleCase } from "@/lib/format"
 import { Badge } from "@/components/ui/badge"
-import { GridList, GridListItem } from "@/components/ui/grid-list"
+import { TableBody } from "react-aria-components"
+import {
+  Table,
+  TableCell,
+  TableColumn,
+  TableHeader as IntentTableHeader,
+  TableRow,
+} from "@/components/ui/table"
+import { MenuSeparator } from "@/components/ui/menu"
+import { EllipsisVerticalIcon } from "@heroicons/react/16/solid"
 import { QuickCreateModal, type QuickType } from "@/components/quick-create-modal"
 import { useState } from "react"
 import { toast } from "sonner"
@@ -264,14 +273,17 @@ export default function DashboardPage() {
         </div>
 
       {suggestions.length > 0 && (
-        <Card className="lg:row-span-2 lg:order-2">
+        <Card className="lg:row-span-2 lg:order-2 flex min-h-0 flex-col">
           <CardHeader>
             <CardTitle>Recurring this week</CardTitle>
             <CardDescription>
               Transactions from the same week last month — one click to clone.
             </CardDescription>
           </CardHeader>
-          <CardContent>
+          <CardContent
+            className="flex-1 overflow-auto px-4 py-0 [&_table]:min-w-[480px]"
+            style={{ "--gutter": "1rem" } as React.CSSProperties}
+          >
             {selectedIds.length > 0 && (
               <div className="mb-3 flex flex-wrap items-center justify-between gap-2 rounded-lg border bg-muted/30 px-3 py-2 text-sm">
                 <span className="font-medium">
@@ -287,61 +299,79 @@ export default function DashboardPage() {
                 </div>
               </div>
             )}
-            <GridList
+            <Table
+              allowResize
               aria-label="Suggested recurring transactions"
-              items={suggestions}
               selectionMode="multiple"
-              selectionBehavior="toggle"
               selectedKeys={selected}
               onSelectionChange={setSelected}
             >
-              {(s) => (
-                <GridListItem
-                  id={s.id}
-                  textValue={s.description}
-                  className="relative !flex-col !items-stretch !gap-2 [&>[slot=selection]]:absolute [&>[slot=selection]]:end-3 [&>[slot=selection]]:top-3 [&>[slot=selection]]:z-10 sm:!flex-row sm:!items-center sm:!gap-2.5 sm:[&>[slot=selection]]:static"
-                >
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-2">
-                      <span className="truncate font-medium">{s.description}</span>
-                      <Badge intent="secondary" className="shrink-0">
-                        {titleCase(s.transaction_type)}
-                      </Badge>
-                      {s.last_this_month && (
-                        <Badge intent="success" className="shrink-0">
-                          Done
+              <IntentTableHeader>
+                <TableColumn id="description" isRowHeader className="w-full">
+                  Description
+                </TableColumn>
+                <TableColumn id="type">Type</TableColumn>
+                <TableColumn id="amount">Amount</TableColumn>
+                <TableColumn id="actions" width={56} minWidth={56} maxWidth={56}>
+                  {""}
+                </TableColumn>
+              </IntentTableHeader>
+              <TableBody items={suggestions}>
+                {(s) => (
+                  <TableRow id={s.id}>
+                    <TableCell>
+                      <div className="flex min-w-0 flex-col">
+                        <span className="truncate font-medium">
+                          {s.description}
+                        </span>
+                        <span className="truncate text-xs text-muted-fg">
+                          {suggestionReason(s)}
+                        </span>
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex flex-wrap items-center gap-1">
+                        <Badge intent="secondary">
+                          {titleCase(s.transaction_type)}
                         </Badge>
-                      )}
-                    </div>
-                    <div className="text-xs text-muted-fg truncate">
-                      {suggestionReason(s)}
-                    </div>
-                  </div>
-                  <div className="flex items-center justify-between gap-3 sm:contents">
-                    <div className="text-right tabular-nums whitespace-nowrap">
+                        {s.last_this_month && (
+                          <Badge intent="success">Done</Badge>
+                        )}
+                      </div>
+                    </TableCell>
+                    <TableCell className="text-right tabular-nums whitespace-nowrap">
                       {fmtMoney(s.amount)}
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Button
-                        intent="plain"
-                        size="sq-sm"
-                        aria-label="Dismiss"
-                        onPress={() => dismissOne(s.id)}
-                      >
-                        <IconTrash />
-                      </Button>
-                      <Button
-                        intent="outline"
-                        size="sm"
-                        onPress={() => cloneSuggestion(s)}
-                      >
-                        <IconPlus /> Clone
-                      </Button>
-                    </div>
-                  </div>
-                </GridListItem>
-              )}
-            </GridList>
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex justify-end">
+                        <Menu>
+                          <MenuTrigger className="size-6">
+                            <EllipsisVerticalIcon />
+                          </MenuTrigger>
+                          <MenuContent
+                            aria-label="Actions"
+                            placement="left top"
+                          >
+                            <MenuItem onAction={() => cloneSuggestion(s)}>
+                              <IconPlus />
+                              Clone
+                            </MenuItem>
+                            <MenuSeparator />
+                            <MenuItem
+                              intent="danger"
+                              onAction={() => dismissOne(s.id)}
+                            >
+                              <IconTrash />
+                              Dismiss
+                            </MenuItem>
+                          </MenuContent>
+                        </Menu>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                )}
+              </TableBody>
+            </Table>
           </CardContent>
         </Card>
       )}
