@@ -14,6 +14,12 @@ import { toast } from "sonner"
 
 export type Selection = RACSelection
 export type ExportFormat = "csv" | "json" | "clipboard"
+export type ExtraAction = {
+  label: string
+  icon?: React.ReactNode
+  onPress: () => void
+  intent?: "primary" | "outline" | "secondary" | "danger"
+}
 
 // Floating bottom-anchored bar shown only when rows are selected. Opt-in
 // `getExportRows` callback enables an Export dropdown (CSV / JSON file /
@@ -24,6 +30,9 @@ export function BulkActionsBar({
   totalRows,
   onClear,
   onDelete,
+  deleteLabel = "Delete",
+  deleteIcon,
+  extraActions,
   label = "selected",
   getExportRows,
   exportFilename = "export",
@@ -31,7 +40,13 @@ export function BulkActionsBar({
   selection: Selection
   totalRows: number
   onClear: () => void
-  onDelete: () => void
+  /** Pass null to suppress the default destructive button entirely. */
+  onDelete: (() => void) | null
+  /** Defaults to "Delete N". Use e.g. "Dismiss" for non-destructive bulk ops. */
+  deleteLabel?: string
+  deleteIcon?: React.ReactNode
+  /** Extra buttons rendered before the destructive button. */
+  extraActions?: ExtraAction[]
   label?: string
   getExportRows?: () => Record<string, unknown>[]
   exportFilename?: string
@@ -122,10 +137,23 @@ export function BulkActionsBar({
               </MenuContent>
             </Menu>
           )}
-          <Button intent="danger" size="sm" onPress={onDelete}>
-            <IconTrash />
-            Delete {count}
-          </Button>
+          {extraActions?.map((a) => (
+            <Button
+              key={a.label}
+              intent={a.intent ?? "outline"}
+              size="sm"
+              onPress={a.onPress}
+            >
+              {a.icon}
+              {a.label}
+            </Button>
+          ))}
+          {onDelete && (
+            <Button intent="danger" size="sm" onPress={onDelete}>
+              {deleteIcon ?? <IconTrash />}
+              {deleteLabel} {count}
+            </Button>
+          )}
         </div>
       </div>
     </div>

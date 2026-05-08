@@ -41,8 +41,14 @@ import {
   TableHeader as IntentTableHeader,
   TableRow,
 } from "@/components/ui/table"
-import { MenuSeparator } from "@/components/ui/menu"
-import { EllipsisVerticalIcon } from "@heroicons/react/16/solid"
+import { BulkActionsBar } from "@/components/bulk-actions-bar"
+import {
+  ModalBody,
+  ModalContent,
+  ModalFooter,
+  ModalHeader,
+  ModalTitle,
+} from "@/components/ui/modal"
 import { QuickCreateModal, type QuickType } from "@/components/quick-create-modal"
 import { useState } from "react"
 import { toast } from "sonner"
@@ -109,6 +115,9 @@ export default function DashboardPage() {
 
   const [quickType, setQuickType] = useState<QuickType>(null)
   const quickCreate = (t: QuickType) => setQuickType(t)
+  const [activeSuggestion, setActiveSuggestion] = useState<Suggestion | null>(
+    null,
+  )
 
   const suggestionsQ = useCachedFetch<Suggestion[]>(
     "dashboard:suggestions",
@@ -281,24 +290,28 @@ export default function DashboardPage() {
             </CardDescription>
           </CardHeader>
           <CardContent
-            className="flex-1 overflow-auto px-4 py-0 [&_table]:min-w-[480px]"
+            className="flex-1 overflow-auto px-4 py-0 [&_table]:min-w-[420px]"
             style={{ "--gutter": "1rem" } as React.CSSProperties}
           >
-            {selectedIds.length > 0 && (
-              <div className="mb-3 flex flex-wrap items-center justify-between gap-2 rounded-lg border bg-muted/30 px-3 py-2 text-sm">
-                <span className="font-medium">
-                  {selectedIds.length} selected
-                </span>
-                <div className="flex items-center gap-2">
-                  <Button intent="outline" size="sm" onPress={bulkDismiss}>
-                    <IconTrash /> Dismiss
-                  </Button>
-                  <Button size="sm" onPress={bulkCreate}>
-                    <IconPlus /> Create all
-                  </Button>
-                </div>
-              </div>
-            )}
+            <BulkActionsBar
+              selection={selected}
+              totalRows={suggestions.length}
+              onClear={() => setSelected(new Set())}
+              onDelete={selectedIds.length > 0 ? bulkDismiss : null}
+              deleteLabel="Dismiss"
+              extraActions={
+                selectedIds.length > 0
+                  ? [
+                      {
+                        label: "Create all",
+                        icon: <IconPlus />,
+                        intent: "primary",
+                        onPress: bulkCreate,
+                      },
+                    ]
+                  : undefined
+              }
+            />
             <Table
               allowResize
               aria-label="Suggested recurring transactions"
@@ -312,13 +325,13 @@ export default function DashboardPage() {
                 </TableColumn>
                 <TableColumn id="type">Type</TableColumn>
                 <TableColumn id="amount">Amount</TableColumn>
-                <TableColumn id="actions" width={56} minWidth={56} maxWidth={56}>
-                  {""}
-                </TableColumn>
               </IntentTableHeader>
               <TableBody items={suggestions}>
                 {(s) => (
-                  <TableRow id={s.id}>
+                  <TableRow
+                    id={s.id}
+                    onAction={() => setActiveSuggestion(s)}
+                  >
                     <TableCell>
                       <div className="flex min-w-0 flex-col">
                         <span className="truncate font-medium">
@@ -342,32 +355,6 @@ export default function DashboardPage() {
                     <TableCell className="text-right tabular-nums whitespace-nowrap">
                       {fmtMoney(s.amount)}
                     </TableCell>
-                    <TableCell>
-                      <div className="flex justify-end">
-                        <Menu>
-                          <MenuTrigger className="size-6">
-                            <EllipsisVerticalIcon />
-                          </MenuTrigger>
-                          <MenuContent
-                            aria-label="Actions"
-                            placement="left top"
-                          >
-                            <MenuItem onAction={() => cloneSuggestion(s)}>
-                              <IconPlus />
-                              Clone
-                            </MenuItem>
-                            <MenuSeparator />
-                            <MenuItem
-                              intent="danger"
-                              onAction={() => dismissOne(s.id)}
-                            >
-                              <IconTrash />
-                              Dismiss
-                            </MenuItem>
-                          </MenuContent>
-                        </Menu>
-                      </div>
-                    </TableCell>
                   </TableRow>
                 )}
               </TableBody>
@@ -381,6 +368,90 @@ export default function DashboardPage() {
         type={quickType}
         onClose={() => setQuickType(null)}
       />
+
+      <ModalContent
+        size="lg"
+        isOpen={activeSuggestion !== null}
+        onOpenChange={(v) => {
+          if (!v) setActiveSuggestion(null)
+        }}
+      >
+        {activeSuggestion && (
+          <>
+            <ModalHeader>
+              <ModalTitle>{activeSuggestion.description}</ModalTitle>
+            </ModalHeader>
+            <ModalBody className="grid gap-3 text-sm">
+              <div className="flex flex-wrap items-center gap-1.5">
+                <Badge intent="secondary">
+                  {titleCase(activeSuggestion.transaction_type)}
+                </Badge>
+                {activeSuggestion.last_this_month && (
+                  <Badge intent="success">Already created this month</Badge>
+                )}
+                <Badge intent="warning">
+                  {fmtMoney(activeSuggestion.amount)}
+                </Badge>
+              </div>
+              <div className="text-muted-fg">
+                {suggestionReason(activeSuggestion)}
+              </div>
+              {Array.isArray((activeSuggestion as any).journal_lines) &&
+                (activeSuggestion as any).journal_lines.length > 0 && (
+                  <div className="rounded-md border bg-muted/30">
+                    <table className="w-full text-sm">
+                      <thead className="bg-muted/50 text-xs text-muted-fg">
+                        <tr>
+                          <th className="p-2 text-left font-medium">Account</th>
+                          <th className="p-2 text-right font-medium">Debit</th>
+                          <th className="p-2 text-right font-medium">Credit</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {(activeSuggestion as any).journal_lines.map(
+                          (l: any, i: number) => (
+                            <tr key={i} className="border-t">
+                              <td className="p-2">
+                                {l.account_name ?? `#${l.account_id}`}
+                              </td>
+                              <td className="p-2 text-right tabular-nums">
+                                {l.debit > 0 ? fmtMoney(l.debit) : ""}
+                              </td>
+                              <td className="p-2 text-right tabular-nums">
+                                {l.credit > 0 ? fmtMoney(l.credit) : ""}
+                              </td>
+                            </tr>
+                          ),
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+            </ModalBody>
+            <ModalFooter className="pt-4 sm:pt-3">
+              <Button
+                intent="danger"
+                onPress={() => {
+                  const s = activeSuggestion
+                  setActiveSuggestion(null)
+                  void dismissOne(s.id)
+                }}
+              >
+                <IconTrash /> Dismiss
+              </Button>
+              <Button
+                onPress={() => {
+                  const s = activeSuggestion
+                  setActiveSuggestion(null)
+                  cloneSuggestion(s)
+                }}
+              >
+                <IconPlus /> Clone
+              </Button>
+            </ModalFooter>
+          </>
+        )}
+      </ModalContent>
     </div>
   )
 }
