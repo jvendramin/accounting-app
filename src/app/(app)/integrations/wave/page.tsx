@@ -41,7 +41,7 @@ type AcctType = (typeof ACCT_TYPES)[number]
 export default function WaveIntegrationPage() {
   const router = useRouter()
   return (
-    <div className="flex w-full min-w-0 flex-col gap-4">
+    <div className="flex w-full min-w-0 max-w-full flex-col gap-4 overflow-x-hidden">
       <div className="flex min-w-0 flex-col gap-2">
         <Button
           intent="plain"
