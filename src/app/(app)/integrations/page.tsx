@@ -86,6 +86,15 @@ const INTEGRATIONS: Integration[] = [
     logo: <Logo slug="wave" />,
   },
   {
+    id: "square",
+    name: "Square",
+    blurb:
+      "Pull paid invoices from your Square account and review them as deposit suggestions before importing.",
+    status: "available",
+    href: "/integrations/square",
+    logo: <Logo slug="square" />,
+  },
+  {
     id: "quickbooks",
     name: "QuickBooks Online",
     blurb: "Bring over your books from QuickBooks via their API or a CSV export.",
