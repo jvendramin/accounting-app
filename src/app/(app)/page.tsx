@@ -116,11 +116,30 @@ const formatCompact = (v: number) =>
 
 export default function DashboardPage() {
   const router = useRouter()
-  const pnlQ = useCachedFetch<PnL>("dashboard:reports/profit_and_loss", () =>
-    api.get("/api/reports/profit_and_loss"),
+  // Default the dashboard P&L / Cashflow tiles to year-to-date so the
+  // "Total income" / "Net" tiles reflect the current fiscal year, not
+  // every transaction ever imported. Computed once per render against
+  // the local clock.
+  const ytd = (() => {
+    const now = new Date()
+    const y = now.getFullYear()
+    const pad = (n: number) => String(n).padStart(2, "0")
+    return {
+      from: `${y}-01-01`,
+      to: `${y}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`,
+    }
+  })()
+  const pnlQ = useCachedFetch<PnL>(
+    `dashboard:reports/profit_and_loss:ytd=${ytd.from}_${ytd.to}`,
+    () =>
+      api.get("/api/reports/profit_and_loss", {
+        from: ytd.from,
+        to: ytd.to,
+      }),
   )
-  const cashQ = useCachedFetch<Cash>("dashboard:reports/cashflow", () =>
-    api.get("/api/reports/cashflow"),
+  const cashQ = useCachedFetch<Cash>(
+    `dashboard:reports/cashflow:ytd=${ytd.from}_${ytd.to}`,
+    () => api.get("/api/reports/cashflow", { from: ytd.from, to: ytd.to }),
   )
 
   const [quickType, setQuickType] = useState<QuickType>(null)
@@ -247,17 +266,23 @@ export default function DashboardPage() {
 
       <div className="grid gap-4 lg:grid-cols-4">
         <Stat
-          label="Income (last 12mo)"
+          label="Income (YTD)"
           value={fmtMoney(pnl?.total_income ?? 0)}
         />
-        <Stat label="Expenses" value={fmtMoney(pnl?.total_expense ?? 0)} />
-        <Stat label="Net Income" value={fmtMoney(pnl?.net_income ?? 0)} />
+        <Stat
+          label="Expenses (YTD)"
+          value={fmtMoney(pnl?.total_expense ?? 0)}
+        />
+        <Stat
+          label="Net Income (YTD)"
+          value={fmtMoney(pnl?.net_income ?? 0)}
+        />
         <div className="grid gap-4 lg:col-span-3 xl:grid-cols-2 lg:order-3">
           <Card>
             <CardHeader>
               <CardTitle>Income vs Expense</CardTitle>
               <CardDescription>
-                Monthly totals from journal lines.
+                Year-to-date monthly totals from journal lines.
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -277,7 +302,9 @@ export default function DashboardPage() {
           <Card>
             <CardHeader>
               <CardTitle>Cashflow</CardTitle>
-              <CardDescription>Net cash movement per month.</CardDescription>
+              <CardDescription>
+                Year-to-date net cash movement per month.
+              </CardDescription>
             </CardHeader>
             <CardContent>
               <LineChart
