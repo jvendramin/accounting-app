@@ -93,7 +93,10 @@ export default function ImportPage() {
   )
   const accounts = accountsData ?? []
   const cashAccounts = useMemo(
-    () => accounts.filter((a) => a.account_type === "asset"),
+    () =>
+      accounts.filter(
+        (a) => a.account_type === "asset" || a.account_type === "liability",
+      ),
     [accounts],
   )
   const [pending, setPending] = useState<Pending[]>([])

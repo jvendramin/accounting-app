@@ -205,9 +205,14 @@ export async function POST(req: Request) {
     const drTypes = finalDebits.map((l) => typeOf(l.account))
     const crTypes = finalCredits.map((l) => typeOf(l.account))
     let txnType = "journal_entry"
-    if (drPrincipal === "asset" && crTypes.includes("income"))
+    // Treat liability accounts (credit cards, lines of credit) as
+    // valid principals: a Cr to a credit card paired with an expense
+    // debit is still a withdrawal-style charge.
+    const isCashLike = (t: string | undefined) =>
+      t === "asset" || t === "liability"
+    if (isCashLike(drPrincipal) && crTypes.includes("income"))
       txnType = "deposit"
-    else if (crPrincipal === "asset" && drTypes.includes("expense"))
+    else if (isCashLike(crPrincipal) && drTypes.includes("expense"))
       txnType = "withdrawal"
 
     const grossTotal = finalDebits.reduce((s, l) => s + l.amount, 0)

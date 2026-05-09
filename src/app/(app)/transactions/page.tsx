@@ -178,8 +178,14 @@ export default function TransactionsPage() {
     [taxesData],
   )
   const accounts = useMemo(() => accountsData ?? [], [accountsData])
+  // "Where the money lives": cash on hand + credit cards / lines of
+  // credit. Withdrawing from a credit card is just as valid as
+  // withdrawing from a chequing account, so include liabilities.
   const cashAccounts = useMemo(
-    () => accounts.filter((a) => a.account_type === "asset"),
+    () =>
+      accounts.filter(
+        (a) => a.account_type === "asset" || a.account_type === "liability",
+      ),
     [accounts],
   )
   const incomeAccounts = useMemo(

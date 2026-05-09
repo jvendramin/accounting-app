@@ -168,7 +168,10 @@ function TxnForm({
   }, [])
 
   const cashAccounts = useMemo(
-    () => accounts.filter((a) => a.account_type === "asset"),
+    () =>
+      accounts.filter(
+        (a) => a.account_type === "asset" || a.account_type === "liability",
+      ),
     [accounts],
   )
   const incomeAccounts = useMemo(
