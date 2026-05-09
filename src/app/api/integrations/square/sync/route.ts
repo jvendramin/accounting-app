@@ -158,28 +158,55 @@ export async function POST(req: Request) {
   //    manually-entered deposits or differently-described imports
   //    still match.
   const existing = await db.execute(sql`
-    select id, date, amount from transactions where transaction_type = 'deposit'
+    select id, date, amount, description, reference
+      from transactions where transaction_type = 'deposit'
   `)
-  type DepositKey = { date: number; amount: string }
-  const deposits: DepositKey[] = (existing.rows as Array<{
+  type DepositRow = {
+    id: number
+    days: number
+    amount: string
+    date: string
+    description: string
+    reference: string | null
+  }
+  const deposits: DepositRow[] = (existing.rows as Array<{
     id: string | number
     date: string
     amount: string
+    description: string
+    reference: string | null
   }>).map((r) => ({
+    id: Number(r.id),
     // Days since epoch — cheap integer comparison instead of date
     // arithmetic on every dedup check.
-    date: Math.floor(new Date(r.date + "T00:00:00Z").getTime() / 86400000),
+    days: Math.floor(new Date(r.date + "T00:00:00Z").getTime() / 86400000),
     amount: Number(r.amount).toFixed(2),
+    date: r.date,
+    description: r.description,
+    reference: r.reference,
   }))
-  const isAlreadyImported = (paidAt: string, amount: number): boolean => {
-    if (!paidAt) return false
+  const findMatch = (
+    paidAt: string,
+    amount: number,
+  ): DepositRow | null => {
+    if (!paidAt) return null
     const target = Math.floor(
       new Date(paidAt + "T00:00:00Z").getTime() / 86400000,
     )
     const amtKey = amount.toFixed(2)
-    return deposits.some(
-      (d) => d.amount === amtKey && Math.abs(d.date - target) <= 7,
-    )
+    // Pick the closest by date when multiple deposits could match.
+    let best: DepositRow | null = null
+    let bestDelta = Infinity
+    for (const d of deposits) {
+      if (d.amount !== amtKey) continue
+      const delta = Math.abs(d.days - target)
+      if (delta > 7) continue
+      if (delta < bestDelta) {
+        best = d
+        bestDelta = delta
+      }
+    }
+    return best
   }
 
   // 5. Shape the response: { suggestions, counts }.
@@ -192,6 +219,13 @@ export async function POST(req: Request) {
     paid_at: string
     customer: string
     already_imported: boolean
+    matched?: {
+      id: number
+      date: string
+      description: string
+      amount: number
+      reference: string | null
+    } | null
   }
   const suggestions: Suggestion[] = paid
     .map((inv) => {
@@ -214,7 +248,8 @@ export async function POST(req: Request) {
       const desc = [title, customer ? `— ${customer}` : ""]
         .filter(Boolean)
         .join(" ")
-      const already = isAlreadyImported(paidAt, amount)
+      const matched = findMatch(paidAt, amount)
+      const already = matched !== null
       return {
         square_id: inv.id,
         invoice_number: inv.invoice_number,
@@ -224,6 +259,15 @@ export async function POST(req: Request) {
         paid_at: paidAt,
         customer,
         already_imported: already,
+        matched: matched
+          ? {
+              id: matched.id,
+              date: matched.date,
+              description: matched.description,
+              amount: Number(matched.amount),
+              reference: matched.reference,
+            }
+          : null,
       }
     })
     .filter((s) => s.amount > 0)

@@ -22,6 +22,14 @@ import {
   ComboBoxItem,
 } from "@/components/ui/combo-box"
 import { DatePicker, DatePickerTrigger } from "@/components/ui/date-picker"
+import {
+  Modal,
+  ModalContent,
+  ModalHeader,
+  ModalBody,
+  ModalFooter,
+  ModalTitle,
+} from "@/components/ui/modal"
 import { parseDate } from "@internationalized/date"
 import { toast } from "sonner"
 import { api, type Account } from "@/lib/api"
@@ -37,6 +45,13 @@ type Suggestion = {
   paid_at: string
   customer: string
   already_imported: boolean
+  matched?: {
+    id: number
+    date: string
+    description: string
+    amount: number
+    reference: string | null
+  } | null
 }
 
 type SyncResp = {
@@ -58,6 +73,10 @@ export default function SquareIntegrationPage() {
   const [importing, setImporting] = useState(false)
   const [resp, setResp] = useState<SyncResp | null>(null)
   const [selected, setSelected] = useState<Set<string>>(new Set())
+  // The "already imported" row the user tapped — opens a modal showing
+  // the matched local transaction with an "Import anyway" override.
+  const [inspect, setInspect] = useState<Suggestion | null>(null)
+  const [overriding, setOverriding] = useState(false)
 
   // Prefer server-configured Square credentials (SQUARE_ACCESS_TOKEN in
   // .env.local). Fall back to localStorage for users running their own
@@ -142,6 +161,41 @@ export default function SquareIntegrationPage() {
       toast.error(m)
     } finally {
       setSyncing(false)
+    }
+  }
+
+  const importAnyway = async (s: Suggestion) => {
+    if (!accountId || !categoryId) {
+      toast.error("Pick a deposit account and an income category first")
+      return
+    }
+    setOverriding(true)
+    try {
+      await api.post<{ created: number }>(
+        "/api/integrations/square/import",
+        {
+          account_id: accountId,
+          category_id: categoryId,
+          invoices: [
+            {
+              square_id: s.square_id,
+              description: s.description,
+              amount: s.amount,
+              paid_at: s.paid_at,
+            },
+          ],
+        },
+      )
+      invalidateCachePrefix("transactions:")
+      invalidateCachePrefix("dashboard:")
+      toast.success("Imported as new deposit")
+      setInspect(null)
+      await sync()
+    } catch (e) {
+      const m = e instanceof Error ? e.message : "Import failed"
+      toast.error(m)
+    } finally {
+      setOverriding(false)
     }
   }
 
@@ -414,7 +468,16 @@ export default function SquareIntegrationPage() {
                   </IntentTableHeader>
                   <TableBody items={existing.map((s) => ({ ...s, id: s.square_id }))}>
                     {(s: any) => (
-                      <TableRow id={s.square_id}>
+                      <TableRow
+                        id={s.square_id}
+                        onAction={() =>
+                          setInspect(
+                            existing.find(
+                              (e) => e.square_id === s.square_id,
+                            ) ?? null,
+                          )
+                        }
+                      >
                         <TableCell className="tabular-nums whitespace-nowrap">
                           {s.paid_at}
                         </TableCell>
@@ -439,6 +502,87 @@ export default function SquareIntegrationPage() {
           )}
         </>
       )}
+
+      <ModalContent
+        size="lg"
+        isOpen={inspect !== null}
+        onOpenChange={(v) => {
+          if (!v && !overriding) setInspect(null)
+        }}
+      >
+        {inspect && (
+          <>
+            <ModalHeader>
+              <ModalTitle>Matched transaction</ModalTitle>
+            </ModalHeader>
+            <ModalBody className="grid gap-4 text-sm">
+              <div>
+                <div className="mb-1 text-xs font-medium text-muted-fg">
+                  Square invoice
+                </div>
+                <div className="rounded-md border bg-muted/30 px-3 py-2.5">
+                  <div className="font-medium">{inspect.title}</div>
+                  <div className="text-xs text-muted-fg">
+                    Paid {inspect.paid_at} · {fmtMoney(inspect.amount)}
+                    {inspect.invoice_number
+                      ? ` · #${inspect.invoice_number}`
+                      : ""}
+                  </div>
+                </div>
+              </div>
+              <div>
+                <div className="mb-1 text-xs font-medium text-muted-fg">
+                  Local deposit (matched within ±7 days, exact amount)
+                </div>
+                {inspect.matched ? (
+                  <div className="rounded-md border bg-muted/30 px-3 py-2.5">
+                    <div className="font-medium">
+                      {inspect.matched.description}
+                    </div>
+                    <div className="text-xs text-muted-fg">
+                      {inspect.matched.date} ·{" "}
+                      {fmtMoney(inspect.matched.amount)}
+                      {inspect.matched.reference
+                        ? ` · ref: ${inspect.matched.reference}`
+                        : ""}
+                    </div>
+                    <a
+                      href={`/transactions?focus=${inspect.matched.id}`}
+                      className="mt-2 inline-block text-xs underline"
+                    >
+                      Open transaction →
+                    </a>
+                  </div>
+                ) : (
+                  <div className="text-xs text-muted-fg">
+                    No local match details available.
+                  </div>
+                )}
+              </div>
+              <p className="text-xs text-muted-fg">
+                If the local transaction isn&rsquo;t actually this Square
+                invoice, click <strong>Import anyway</strong> to record a
+                new deposit. The existing one stays untouched.
+              </p>
+            </ModalBody>
+            <ModalFooter>
+              <Button
+                intent="outline"
+                onPress={() => setInspect(null)}
+                isDisabled={overriding}
+              >
+                Close
+              </Button>
+              <Button
+                onPress={() => importAnyway(inspect)}
+                isPending={overriding}
+              >
+                Import anyway
+              </Button>
+            </ModalFooter>
+          </>
+        )}
+      </ModalContent>
     </div>
   )
 }
