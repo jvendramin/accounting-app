@@ -274,28 +274,75 @@ export function parseWaveCsv(csv: string): WaveParseResult {
   }
   const ambiguous: WaveLine[] = []
   for (const [date, arr] of byDate) {
-    const debits = arr.filter((l) => l.side === "debit")
-    const credits = arr.filter((l) => l.side === "credit")
-    const drTotal = debits.reduce((s, l) => s + l.amount, 0)
-    const crTotal = credits.reduce((s, l) => s + l.amount, 0)
-    if (
-      debits.length > 0 &&
-      credits.length > 0 &&
-      Math.abs(drTotal - crTotal) < 0.01
-    ) {
-      // Use the description of the largest line for the parent transaction
-      // (compound entries usually have one anchor line).
-      const anchor = arr.reduce((a, b) => (b.amount > a.amount ? b : a))
-      groups.push({
-        date,
-        description: anchor.description || "(compound entry)",
-        amount: drTotal,
-        debits,
-        credits,
-        balanced: true,
-      })
-    } else {
-      ambiguous.push(...arr)
+    // Sub-bucket the day by normalised description first. Lines that
+    // belong to the same compound transaction always share a description
+    // across their legs, so this lets two same-day, same-total compound
+    // entries (e.g. two identical $9,187 deposits on Apr 30) stay
+    // separate instead of merging into one super-transaction.
+    const subBuckets = new Map<string, WaveLine[]>()
+    for (const ln of arr) {
+      const key = norm(ln.description) || "__nodesc__"
+      const a = subBuckets.get(key)
+      if (a) a.push(ln)
+      else subBuckets.set(key, [ln])
+    }
+    // Try to balance each sub-bucket on its own. Anything that doesn't
+    // balance per-description falls through to a single full-day attempt
+    // (preserves the original compound-entry behaviour for CSVs whose
+    // legs use distinct descriptions).
+    const balancedSubs: WaveLine[] = []
+    const dayLeftover: WaveLine[] = []
+    for (const [, lines] of subBuckets) {
+      const debits = lines.filter((l) => l.side === "debit")
+      const credits = lines.filter((l) => l.side === "credit")
+      const drTotal = debits.reduce((s, l) => s + l.amount, 0)
+      const crTotal = credits.reduce((s, l) => s + l.amount, 0)
+      if (
+        debits.length > 0 &&
+        credits.length > 0 &&
+        Math.abs(drTotal - crTotal) < 0.01
+      ) {
+        const anchor = lines.reduce((a, b) => (b.amount > a.amount ? b : a))
+        groups.push({
+          date,
+          description: anchor.description || "(compound entry)",
+          amount: drTotal,
+          debits,
+          credits,
+          balanced: true,
+        })
+        balancedSubs.push(...lines)
+      } else {
+        dayLeftover.push(...lines)
+      }
+    }
+    // Final fallback: if some lines didn't balance per-description, but
+    // the *remainder* still balances at the day level, collapse them as
+    // before. This catches compound entries with mixed descriptions.
+    if (dayLeftover.length > 0) {
+      const debits = dayLeftover.filter((l) => l.side === "debit")
+      const credits = dayLeftover.filter((l) => l.side === "credit")
+      const drTotal = debits.reduce((s, l) => s + l.amount, 0)
+      const crTotal = credits.reduce((s, l) => s + l.amount, 0)
+      if (
+        debits.length > 0 &&
+        credits.length > 0 &&
+        Math.abs(drTotal - crTotal) < 0.01
+      ) {
+        const anchor = dayLeftover.reduce((a, b) =>
+          b.amount > a.amount ? b : a,
+        )
+        groups.push({
+          date,
+          description: anchor.description || "(compound entry)",
+          amount: drTotal,
+          debits,
+          credits,
+          balanced: true,
+        })
+      } else {
+        ambiguous.push(...dayLeftover)
+      }
     }
   }
 
