@@ -33,6 +33,7 @@ import {
 import { api } from "@/lib/api"
 import { fmtMoney, titleCase } from "@/lib/format"
 import { Badge } from "@/components/ui/badge"
+import { Skeleton } from "@/components/ui/skeleton"
 import { TableBody } from "react-aria-components"
 import {
   Table,
@@ -223,14 +224,50 @@ export default function DashboardPage() {
   const pnl = pnlQ.data
   const cash = cashQ.data
 
-  const Stat = ({ label, value }: { label: string; value: string }) => (
+  // Lightweight chart placeholder — varying-height bars or a centred
+  // line block. Same 280px frame the real chart will paint into so
+  // the layout doesn't jump when data lands.
+  const ChartSkeleton = ({ kind }: { kind: "bars" | "line" }) => {
+    const heights = [40, 70, 55, 85, 50, 75, 60, 90, 45, 80, 65, 70]
+    return (
+      <div className="h-[280px] w-full">
+        {kind === "bars" ? (
+          <div className="flex h-full items-end gap-2 px-2">
+            {heights.map((h, i) => (
+              <Skeleton key={i} className="flex-1" style={{ height: `${h}%` }} />
+            ))}
+          </div>
+        ) : (
+          <div className="flex h-full items-center px-2">
+            <Skeleton className="h-24 w-full" />
+          </div>
+        )}
+      </div>
+    )
+  }
+
+  const Stat = ({
+    label,
+    value,
+    loading,
+  }: {
+    label: string
+    value: string
+    loading?: boolean
+  }) => (
     <Card>
       <CardHeader>
         <CardTitle className="text-sm font-medium text-muted-fg">
           {label}
         </CardTitle>
       </CardHeader>
-      <CardContent className="text-2xl font-semibold">{value}</CardContent>
+      <CardContent className="text-2xl font-semibold">
+        {loading ? (
+          <Skeleton className="h-7 w-28" />
+        ) : (
+          value
+        )}
+      </CardContent>
     </Card>
   )
 
@@ -268,14 +305,17 @@ export default function DashboardPage() {
         <Stat
           label="Income (YTD)"
           value={fmtMoney(pnl?.total_income ?? 0)}
+          loading={pnlQ.loading && !pnl}
         />
         <Stat
           label="Expenses (YTD)"
           value={fmtMoney(pnl?.total_expense ?? 0)}
+          loading={pnlQ.loading && !pnl}
         />
         <Stat
           label="Net Income (YTD)"
           value={fmtMoney(pnl?.net_income ?? 0)}
+          loading={pnlQ.loading && !pnl}
         />
         <div className="grid gap-4 lg:col-span-3 xl:grid-cols-2 lg:order-3">
           <Card>
@@ -286,17 +326,21 @@ export default function DashboardPage() {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <BarChart
-                containerHeight={280}
-                data={pnl?.monthly ?? []}
-                dataKey="month"
-                valueFormatter={formatCompact}
-                xAxisProps={{ interval: 0 }}
-                config={{
-                  income: { label: "Income", color: "var(--color-emerald-500)" },
-                  expense: { label: "Expense", color: "var(--color-red-500)" },
-                }}
-              />
+              {pnlQ.loading && !pnl ? (
+                <ChartSkeleton kind="bars" />
+              ) : (
+                <BarChart
+                  containerHeight={280}
+                  data={pnl?.monthly ?? []}
+                  dataKey="month"
+                  valueFormatter={formatCompact}
+                  xAxisProps={{ interval: 0 }}
+                  config={{
+                    income: { label: "Income", color: "var(--color-emerald-500)" },
+                    expense: { label: "Expense", color: "var(--color-red-500)" },
+                  }}
+                />
+              )}
             </CardContent>
           </Card>
           <Card>
@@ -307,13 +351,17 @@ export default function DashboardPage() {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <LineChart
-                containerHeight={280}
-                data={cash?.monthly ?? []}
-                dataKey="month"
-                valueFormatter={formatCompact}
-                config={{ net: { label: "Net", color: "var(--color-sky-500)" } }}
-              />
+              {cashQ.loading && !cash ? (
+                <ChartSkeleton kind="line" />
+              ) : (
+                <LineChart
+                  containerHeight={280}
+                  data={cash?.monthly ?? []}
+                  dataKey="month"
+                  valueFormatter={formatCompact}
+                  config={{ net: { label: "Net", color: "var(--color-sky-500)" } }}
+                />
+              )}
             </CardContent>
           </Card>
         </div>
