@@ -508,7 +508,7 @@ export default function TransactionsPage() {
   const editTxn = (t: Txn) => {
     setEditingId(t.id)
     const txnType = (t as any).transaction_type ?? t.transactionType
-    if (txnType === "journal_entry" || t.journal_lines.length !== 2) {
+    if (txnType === "journal_entry") {
       setTab("journal")
       setJournal({
         date: t.date,
@@ -522,12 +522,42 @@ export default function TransactionsPage() {
         })),
       })
     } else {
-      const debitLine = t.journal_lines.find((l) => Number(l.debit) > 0)
-      const creditLine = t.journal_lines.find((l) => Number(l.credit) > 0)
+      // Deposits & withdrawals always land on the simple tab. For
+      // compound imports (e.g. Wave's RBC dr / GST cr / Sales cr), the
+      // tax-flavored credit lines collapse into tax_ids by matching
+      // the line's account name against the taxes table; the largest
+      // remaining non-tax line becomes the category, and gross amount
+      // is the recorded transaction total.
       const kind: SimpleKind =
         txnType === "withdrawal" ? "withdrawal" : "deposit"
-      const accountLine = kind === "deposit" ? debitLine : creditLine
-      const categoryLine = kind === "deposit" ? creditLine : debitLine
+      const principalSide = kind === "deposit" ? "debit" : "credit"
+      const splitSide = kind === "deposit" ? "credit" : "debit"
+      const principalLines = t.journal_lines.filter(
+        (l) => Number(principalSide === "debit" ? l.debit : l.credit) > 0,
+      )
+      const splitLines = t.journal_lines.filter(
+        (l) => Number(splitSide === "debit" ? l.debit : l.credit) > 0,
+      )
+      const taxIds: number[] = []
+      const nonTaxLines: typeof splitLines = []
+      for (const sl of splitLines) {
+        const acctName = (
+          (sl as any).account_name ?? ""
+        ).toLowerCase()
+        const matched = activeTaxes.find((tx) => {
+          const tn = tx.name.toLowerCase()
+          return acctName && (acctName.includes(tn) || tn.includes(acctName))
+        })
+        if (matched) taxIds.push(matched.id)
+        else nonTaxLines.push(sl)
+      }
+      const pickAmount = (l: (typeof splitLines)[number]) =>
+        Number(splitSide === "debit" ? l.debit : l.credit)
+      const category = nonTaxLines.length
+        ? nonTaxLines.reduce((a, b) =>
+            pickAmount(b) > pickAmount(a) ? b : a,
+          )
+        : splitLines[0]
       setTab("simple")
       setSimple({
         date: t.date,
@@ -535,9 +565,9 @@ export default function TransactionsPage() {
         reference: t.reference ?? "",
         kind,
         amount: Number(t.amount),
-        account_id: accountLine?.account_id,
-        category_id: categoryLine?.account_id,
-        tax_ids: (t as any).tax_ids ?? [],
+        account_id: principalLines[0]?.account_id,
+        category_id: category?.account_id,
+        tax_ids: taxIds.length ? taxIds : (t as any).tax_ids ?? [],
       })
     }
     setOpen(true)
