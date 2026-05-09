@@ -1017,12 +1017,14 @@ export default function TransactionsPage() {
               return (
                 <div className="mt-1 flex items-center gap-2 text-sm">
                   <span className="text-muted-fg">Type:</span>
-                  <Badge intent={TYPE_INTENT[curType] ?? "secondary"}>
-                    {titleCase(curType.replace("_", " "))}
-                  </Badge>
                   <Menu>
-                    <MenuTrigger>
-                      <Button intent="outline" size="xs">Change</Button>
+                    <MenuTrigger
+                      aria-label="Convert type"
+                      className="cursor-pointer rounded-full focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                    >
+                      <Badge intent={TYPE_INTENT[curType] ?? "secondary"}>
+                        {titleCase(curType.replace("_", " "))}
+                      </Badge>
                     </MenuTrigger>
                     <MenuContent aria-label="Convert type">
                       {(["deposit", "withdrawal", "journal_entry"] as const)
@@ -1082,8 +1084,8 @@ export default function TransactionsPage() {
               className="mb-4"
             >
               <TabList>
-                <Tab id="simple">Simple</Tab>
-                <Tab id="journal">Detailed</Tab>
+                <Tab id="simple">Deposit / Withdrawal</Tab>
+                <Tab id="journal">Journal Entry</Tab>
               </TabList>
             </Tabs>
             {tab === "simple" ? (
