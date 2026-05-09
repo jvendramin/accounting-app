@@ -33,7 +33,11 @@ export function PwaSplash() {
       className="pwa-splash pointer-events-none fixed inset-0 z-[100] hidden flex-col items-center justify-center gap-4 bg-bg text-fg transition-opacity duration-300 data-[hidden]:opacity-0"
     >
       {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img src="/logo.png" alt="" className="size-24 drop-shadow-md" />
+      <img
+        src="/logo-light.jpg"
+        alt=""
+        className="size-24 rounded-2xl object-cover drop-shadow-md"
+      />
       <div className="text-2xl font-semibold tracking-tight">Books</div>
     </div>
   )

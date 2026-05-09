@@ -120,11 +120,19 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       <Sidebar intent="inset" collapsible="dock">
         <SidebarHeader>
           <div className="flex items-center gap-2">
+            {/* Light mode shows the colour mark; dark mode swaps to the
+                white-on-transparent PNG so it reads on the dark sidebar. */}
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
-              src="/logo.png"
+              src="/logo-light.jpg"
               alt=""
-              className="size-7 shrink-0"
+              className="size-7 shrink-0 rounded-md object-cover dark:hidden"
+            />
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src="/logo-dark.png"
+              alt=""
+              className="hidden size-7 shrink-0 object-contain dark:block"
             />
             <SidebarLabel className="font-semibold in-data-[collapsible=dock]:hidden">
               Books
