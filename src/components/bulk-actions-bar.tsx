@@ -11,9 +11,10 @@ import {
 import { IconTrash, IconX } from "@/components/icons"
 import { Download, FileJson, FileSpreadsheet, ClipboardCopy } from "lucide-react"
 import { toast } from "sonner"
+import { toCsv, downloadBlob, type ExportFormat } from "@/lib/export"
 
 export type Selection = RACSelection
-export type ExportFormat = "csv" | "json" | "clipboard"
+export type { ExportFormat }
 export type ExtraAction = {
   label: string
   icon?: React.ReactNode
@@ -171,37 +172,3 @@ export function selectedIds(
 
 // ---------------------------------------------------------------------------
 
-function toCsv(rows: Record<string, unknown>[]): string {
-  if (rows.length === 0) return ""
-  // Union of keys across all rows so jagged objects still serialise cleanly.
-  const headerSet = new Set<string>()
-  for (const r of rows) for (const k of Object.keys(r)) headerSet.add(k)
-  const headers = [...headerSet]
-  const escape = (v: unknown): string => {
-    if (v == null) return ""
-    const s =
-      typeof v === "string"
-        ? v
-        : typeof v === "number" || typeof v === "boolean"
-          ? String(v)
-          : JSON.stringify(v)
-    return /[",\n\r]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s
-  }
-  const lines = [
-    headers.join(","),
-    ...rows.map((r) => headers.map((h) => escape(r[h])).join(",")),
-  ]
-  return lines.join("\n")
-}
-
-function downloadBlob(blob: Blob, filename: string) {
-  const url = URL.createObjectURL(blob)
-  const a = document.createElement("a")
-  a.href = url
-  a.download = filename
-  document.body.appendChild(a)
-  a.click()
-  a.remove()
-  // Defer revoke a tick so Safari has time to fire the download.
-  setTimeout(() => URL.revokeObjectURL(url), 1000)
-}

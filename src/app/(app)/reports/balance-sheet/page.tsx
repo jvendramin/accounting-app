@@ -16,6 +16,7 @@ import { parseDate } from "@internationalized/date"
 import { useCachedFetch } from "@/hooks/use-cached-fetch"
 import { api } from "@/lib/api"
 import { fmtMoney, titleCase } from "@/lib/format"
+import { ReportExportMenu } from "@/components/report-export-menu"
 
 type BS = {
   accounts: Array<{
@@ -46,13 +47,34 @@ export default function ReportsBalanceSheetPage() {
     <Card className="flex flex-1 min-h-0 flex-col">
       <CardHeader className="flex w-full flex-col items-stretch gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
         <CardTitle>Balance Sheet</CardTitle>
-        <DatePicker
-          value={asOf ? parseDate(asOf) : null}
-          onChange={(d) => setAsOf(d ? d.toString() : "")}
-        >
-          <Label>As of</Label>
-          <DatePickerTrigger />
-        </DatePicker>
+        <div className="flex w-full flex-col items-stretch gap-2 sm:w-auto sm:flex-row sm:items-end">
+          <ReportExportMenu
+            filename={`balance-sheet${asOf ? `_${asOf}` : ""}`}
+            getRows={() => ({
+              Accounts: rows.map((a) => ({
+                code: a.code ?? "",
+                name: a.name,
+                type: a.account_type,
+                balance: a.balance,
+              })),
+              Totals: [
+                {
+                  total_assets: totals.asset,
+                  total_liabilities: totals.liability,
+                  total_equity: totals.equity,
+                  liabilities_plus_equity: totals.liability + totals.equity,
+                },
+              ],
+            })}
+          />
+          <DatePicker
+            value={asOf ? parseDate(asOf) : null}
+            onChange={(d) => setAsOf(d ? d.toString() : "")}
+          >
+            <Label>As of</Label>
+            <DatePickerTrigger />
+          </DatePicker>
+        </div>
       </CardHeader>
       <CardContent className="flex-1 overflow-auto p-0">
         <Table aria-label="Balance sheet">

@@ -21,6 +21,7 @@ import { parseDate } from "@internationalized/date"
 import { useCachedFetch } from "@/hooks/use-cached-fetch"
 import { api } from "@/lib/api"
 import { fmtMoney, titleCase } from "@/lib/format"
+import { ReportExportMenu } from "@/components/report-export-menu"
 
 type TaxTotal = {
   tax_id: number
@@ -88,7 +89,29 @@ export default function ReportsTaxesPage() {
       <Card>
         <CardHeader className="flex w-full flex-col items-stretch gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
           <CardTitle>Tax report</CardTitle>
-          <div className="w-full sm:w-auto">
+          <div className="flex w-full flex-col items-stretch gap-2 sm:w-auto sm:flex-row sm:items-end">
+            <ReportExportMenu
+              filename={`tax-report${from && to ? `_${from}_${to}` : ""}`}
+              getRows={() => ({
+                Totals: totals.map((t) => ({
+                  tax: t.tax_name,
+                  rate: Number(t.rate),
+                  txns: t.count,
+                  net: Number(t.net),
+                  collected: Number(t.collected),
+                })),
+                Details: filteredDetails.map((d) => ({
+                  date: d.date,
+                  description: d.description,
+                  type: d.transaction_type,
+                  tax: d.tax_name,
+                  rate: Number(d.rate),
+                  net: Number(d.net_amount),
+                  tax_amount: Number(d.tax_amount),
+                  gross: Number(d.amount),
+                })),
+              })}
+            />
             <DateRangePicker
               value={
                 from && to

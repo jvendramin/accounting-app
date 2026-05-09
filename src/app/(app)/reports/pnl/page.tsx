@@ -19,6 +19,7 @@ import { parseDate } from "@internationalized/date"
 import { useCachedFetch } from "@/hooks/use-cached-fetch"
 import { api } from "@/lib/api"
 import { fmtMoney } from "@/lib/format"
+import { ReportExportMenu } from "@/components/report-export-menu"
 
 type PnL = {
   total_income: number
@@ -43,7 +44,25 @@ export default function ReportsPnLPage() {
     <Card className="flex flex-1 min-h-0 flex-col">
       <CardHeader className="flex w-full flex-col items-stretch gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
         <CardTitle>Profit &amp; Loss</CardTitle>
-        <div className="w-full sm:w-auto">
+        <div className="flex w-full flex-col items-stretch gap-2 sm:w-auto sm:flex-row sm:items-end">
+          <ReportExportMenu
+            filename={`profit-and-loss${from && to ? `_${from}_${to}` : ""}`}
+            getRows={() => ({
+              Monthly: rows.map((r) => ({
+                month: r.month,
+                income: r.income,
+                expense: r.expense,
+                net: r.net,
+              })),
+              Totals: [
+                {
+                  total_income: data?.total_income ?? 0,
+                  total_expense: data?.total_expense ?? 0,
+                  net_income: data?.net_income ?? 0,
+                },
+              ],
+            })}
+          />
           <DateRangePicker
             value={
               from && to

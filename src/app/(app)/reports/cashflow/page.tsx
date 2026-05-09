@@ -19,6 +19,7 @@ import { parseDate } from "@internationalized/date"
 import { useCachedFetch } from "@/hooks/use-cached-fetch"
 import { api } from "@/lib/api"
 import { fmtMoney } from "@/lib/format"
+import { ReportExportMenu } from "@/components/report-export-menu"
 
 type Cash = {
   monthly: Array<{ month: string; inflow: number; outflow: number; net: number }>
@@ -41,7 +42,18 @@ export default function ReportsCashflowPage() {
     <Card className="flex flex-1 min-h-0 flex-col">
       <CardHeader className="flex w-full flex-col items-stretch gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
         <CardTitle>Cashflow</CardTitle>
-        <div className="w-full sm:w-auto">
+        <div className="flex w-full flex-col items-stretch gap-2 sm:w-auto sm:flex-row sm:items-end">
+          <ReportExportMenu
+            filename={`cashflow${from && to ? `_${from}_${to}` : ""}`}
+            getRows={() => ({
+              Monthly: rows.map((r) => ({
+                month: r.month,
+                inflow: r.inflow,
+                outflow: r.outflow,
+                net: r.net,
+              })),
+            })}
+          />
           <DateRangePicker
             value={
               from && to
