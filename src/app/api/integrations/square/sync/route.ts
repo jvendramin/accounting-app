@@ -13,10 +13,11 @@ export const maxDuration = 60
 // invoices imported manually (or via Wave) don't reappear as suggestions.
 
 const Input = z.object({
-  access_token: z.string().min(10),
-  environment: z.enum(["production", "sandbox"]).default("production"),
-  // Optional ISO YYYY-MM-DD lower bound. Square treats it as a hint only;
-  // we re-filter client-side.
+  // Both optional; if omitted we fall back to SQUARE_ACCESS_TOKEN /
+  // SQUARE_ENVIRONMENT env vars so the user doesn't have to paste a
+  // token every time the page is opened.
+  access_token: z.string().min(10).optional(),
+  environment: z.enum(["production", "sandbox"]).optional(),
   since: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
 })
 
@@ -60,11 +61,25 @@ type SquareInvoice = {
 }
 
 export async function POST(req: Request) {
-  const body = Input.parse(await req.json())
-  const host = HOSTS[body.environment]
+  const body = Input.parse(await req.json().catch(() => ({})))
+  const accessToken = body.access_token ?? process.env.SQUARE_ACCESS_TOKEN
+  const environment =
+    body.environment ??
+    ((process.env.SQUARE_ENVIRONMENT as "production" | "sandbox") ||
+      "production")
+  if (!accessToken) {
+    return NextResponse.json(
+      {
+        error:
+          "No Square access token. Set SQUARE_ACCESS_TOKEN in .env.local or pass access_token in the request body.",
+      },
+      { status: 400 },
+    )
+  }
+  const host = HOSTS[environment]
 
   const headers = {
-    Authorization: `Bearer ${body.access_token}`,
+    Authorization: `Bearer ${accessToken}`,
     "Square-Version": SQUARE_VERSION,
     "Content-Type": "application/json",
   }

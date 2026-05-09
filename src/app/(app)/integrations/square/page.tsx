@@ -52,22 +52,36 @@ export default function SquareIntegrationPage() {
   const [environment, setEnvironment] = useState<"production" | "sandbox">(
     "production",
   )
+  const [serverHasToken, setServerHasToken] = useState(false)
   const [since, setSince] = useState("")
   const [syncing, setSyncing] = useState(false)
   const [importing, setImporting] = useState(false)
   const [resp, setResp] = useState<SyncResp | null>(null)
   const [selected, setSelected] = useState<Set<string>>(new Set())
 
-  // Restore token from localStorage so the user doesn't have to paste it
-  // every time. (Read-only at the gateway; downstream can validate.)
+  // Prefer server-configured Square credentials (SQUARE_ACCESS_TOKEN in
+  // .env.local). Fall back to localStorage for users running their own
+  // copy without env access.
   useEffect(() => {
-    const t = window.localStorage.getItem(TOKEN_KEY) ?? ""
-    setToken(t)
-    const e = window.localStorage.getItem(ENV_KEY) as
-      | "production"
-      | "sandbox"
-      | null
-    if (e) setEnvironment(e)
+    api
+      .get<{ has_token: boolean; environment: "production" | "sandbox" }>(
+        "/api/integrations/square/config",
+      )
+      .then((c) => {
+        setServerHasToken(c.has_token)
+        if (c.has_token) {
+          setEnvironment(c.environment)
+          return
+        }
+        const t = window.localStorage.getItem(TOKEN_KEY) ?? ""
+        setToken(t)
+        const e = window.localStorage.getItem(ENV_KEY) as
+          | "production"
+          | "sandbox"
+          | null
+        if (e) setEnvironment(e)
+      })
+      .catch(() => {})
   }, [])
 
   const { data: accountsData } = useCachedFetch<Account[]>(
@@ -99,17 +113,22 @@ export default function SquareIntegrationPage() {
   }, [incomeAccounts, categoryId])
 
   const sync = async () => {
-    if (!token) {
+    if (!serverHasToken && !token) {
       toast.error("Paste a Square access token first")
       return
     }
     setSyncing(true)
     try {
-      window.localStorage.setItem(TOKEN_KEY, token)
-      window.localStorage.setItem(ENV_KEY, environment)
+      if (!serverHasToken) {
+        window.localStorage.setItem(TOKEN_KEY, token)
+        window.localStorage.setItem(ENV_KEY, environment)
+      }
       const r = await api.post<SyncResp>("/api/integrations/square/sync", {
-        access_token: token,
-        environment,
+        // Server prefers env values; only send body fields when the
+        // user is supplying them via the in-page form.
+        ...(serverHasToken
+          ? {}
+          : { access_token: token, environment }),
         ...(since ? { since } : {}),
       })
       setResp(r)
@@ -184,36 +203,49 @@ export default function SquareIntegrationPage() {
           </p>
         </CardHeader>
         <CardContent className="grid gap-4">
-          <TextField value={token} onChange={setToken} type="password">
-            <Label>Access token</Label>
-            <Input placeholder="EAA…" autoComplete="off" />
-            <p className="text-xs text-muted-fg">
-              Generate a personal access token in the{" "}
-              <a
-                href="https://developer.squareup.com/apps"
-                target="_blank"
-                rel="noreferrer"
-                className="underline"
+          {serverHasToken ? (
+            <div className="rounded-md border bg-muted/30 px-3 py-2 text-sm">
+              <div className="font-medium">Server credentials configured</div>
+              <p className="text-xs text-muted-fg">
+                Using <code>SQUARE_ACCESS_TOKEN</code> from <code>.env.local</code>{" "}
+                ({environment}). To override for this session, clear it on the
+                server.
+              </p>
+            </div>
+          ) : (
+            <>
+              <TextField value={token} onChange={setToken} type="password">
+                <Label>Access token</Label>
+                <Input placeholder="EAA…" autoComplete="off" />
+                <p className="text-xs text-muted-fg">
+                  Generate a personal access token in the{" "}
+                  <a
+                    href="https://developer.squareup.com/apps"
+                    target="_blank"
+                    rel="noreferrer"
+                    className="underline"
+                  >
+                    Square Developer Dashboard
+                  </a>
+                  . Stored only in this browser&rsquo;s local storage.
+                </p>
+              </TextField>
+              <ComboBox
+                selectedKey={environment}
+                onSelectionChange={(k) =>
+                  k && setEnvironment(k as "production" | "sandbox")
+                }
               >
-                Square Developer Dashboard
-              </a>
-              . Stored only in this browser&rsquo;s local storage.
-            </p>
-          </TextField>
+                <Label>Environment</Label>
+                <ComboBoxInput />
+                <ComboBoxContent>
+                  <ComboBoxItem id="production">Production</ComboBoxItem>
+                  <ComboBoxItem id="sandbox">Sandbox</ComboBoxItem>
+                </ComboBoxContent>
+              </ComboBox>
+            </>
+          )}
           <div className="grid gap-3 sm:grid-cols-2">
-            <ComboBox
-              selectedKey={environment}
-              onSelectionChange={(k) =>
-                k && setEnvironment(k as "production" | "sandbox")
-              }
-            >
-              <Label>Environment</Label>
-              <ComboBoxInput />
-              <ComboBoxContent>
-                <ComboBoxItem id="production">Production</ComboBoxItem>
-                <ComboBoxItem id="sandbox">Sandbox</ComboBoxItem>
-              </ComboBoxContent>
-            </ComboBox>
             <DatePicker
               value={since ? parseDate(since) : null}
               onChange={(d) => setSince(d ? d.toString() : "")}
