@@ -904,8 +904,8 @@ export default function TransactionsPage() {
               <TableColumn id="description" allowsSorting isResizable className="w-full">
                 Description
               </TableColumn>
-              <TableColumn id="reference" allowsSorting isResizable>
-                Reference
+              <TableColumn id="account" isResizable>
+                Account
               </TableColumn>
               <TableColumn id="transaction_type" allowsSorting>
                 Type
@@ -927,11 +927,38 @@ export default function TransactionsPage() {
             >
               {(t) => {
                 const txnType = (t as any).transaction_type ?? t.transactionType
+                // "Account" = the cash-side (principal) account: largest
+                // debit line for deposits, largest credit line for
+                // withdrawals. For journal entries we just show how
+                // many lines were touched.
+                const principalLines =
+                  txnType === "deposit"
+                    ? t.journal_lines.filter((l) => Number(l.debit) > 0)
+                    : txnType === "withdrawal"
+                      ? t.journal_lines.filter((l) => Number(l.credit) > 0)
+                      : []
+                const principal =
+                  principalLines.length > 0
+                    ? principalLines.reduce((a, b) =>
+                        Number(
+                          txnType === "deposit" ? b.debit : b.credit,
+                        ) >
+                        Number(
+                          txnType === "deposit" ? a.debit : a.credit,
+                        )
+                          ? b
+                          : a,
+                      )
+                    : null
+                const accountLabel =
+                  txnType === "journal_entry"
+                    ? `${t.journal_lines.length} lines`
+                    : ((principal as any)?.account_name ?? "")
                 return (
                   <TableRow id={t.id} onAction={() => editTxn(t)}>
                     <TableCell className="font-mono text-xs">{t.date}</TableCell>
                     <TableCell className="font-medium">{t.description}</TableCell>
-                    <TableCell className="text-muted-fg">{t.reference}</TableCell>
+                    <TableCell className="text-muted-fg">{accountLabel}</TableCell>
                     <TableCell>
                       <Badge intent={TYPE_INTENT[txnType] ?? "primary"}>
                         {titleCase(txnType)}
