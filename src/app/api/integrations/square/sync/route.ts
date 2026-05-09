@@ -151,25 +151,35 @@ export async function POST(req: Request) {
       return ts ? ts.slice(0, 10) >= body.since : true
     })
 
-  // 4. Dedup: collect existing references and (date, amount) tuples.
+  // 4. Dedup: any deposit whose amount matches an invoice's gross AND
+  //    whose date falls within ±7 days of the paid date counts as
+  //    "already imported". We deliberately ignore description /
+  //    reference — the user wants a pure (date, amount) signal so
+  //    manually-entered deposits or differently-described imports
+  //    still match.
   const existing = await db.execute(sql`
-    select id, date, amount, reference, description from transactions
+    select id, date, amount from transactions where transaction_type = 'deposit'
   `)
-  const existingByRef = new Map<string, number>()
-  const existingByKey = new Map<string, number>()
-  for (const r of existing.rows as Array<{
+  type DepositKey = { date: number; amount: string }
+  const deposits: DepositKey[] = (existing.rows as Array<{
     id: string | number
     date: string
     amount: string
-    reference: string | null
-    description: string
-  }>) {
-    if (r.reference) {
-      const m = r.reference.match(/Square invoice (\S+)/i)
-      if (m) existingByRef.set(m[1], Number(r.id))
-    }
-    const amt = Number(r.amount).toFixed(2)
-    existingByKey.set(`${r.date}|${amt}`, Number(r.id))
+  }>).map((r) => ({
+    // Days since epoch — cheap integer comparison instead of date
+    // arithmetic on every dedup check.
+    date: Math.floor(new Date(r.date + "T00:00:00Z").getTime() / 86400000),
+    amount: Number(r.amount).toFixed(2),
+  }))
+  const isAlreadyImported = (paidAt: string, amount: number): boolean => {
+    if (!paidAt) return false
+    const target = Math.floor(
+      new Date(paidAt + "T00:00:00Z").getTime() / 86400000,
+    )
+    const amtKey = amount.toFixed(2)
+    return deposits.some(
+      (d) => d.amount === amtKey && Math.abs(d.date - target) <= 7,
+    )
   }
 
   // 5. Shape the response: { suggestions, counts }.
@@ -204,9 +214,7 @@ export async function POST(req: Request) {
       const desc = [title, customer ? `— ${customer}` : ""]
         .filter(Boolean)
         .join(" ")
-      const amtKey = `${paidAt}|${amount.toFixed(2)}`
-      const already =
-        existingByRef.has(inv.id) || existingByKey.has(amtKey)
+      const already = isAlreadyImported(paidAt, amount)
       return {
         square_id: inv.id,
         invoice_number: inv.invoice_number,
