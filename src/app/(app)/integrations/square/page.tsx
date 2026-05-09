@@ -77,6 +77,42 @@ export default function SquareIntegrationPage() {
   // the matched local transaction with an "Import anyway" override.
   const [inspect, setInspect] = useState<Suggestion | null>(null)
   const [overriding, setOverriding] = useState(false)
+  // Cross-check modal — searches the local transactions list without
+  // leaving the page so the user can sanity-check a match before
+  // importing.
+  const [searchOpen, setSearchOpen] = useState(false)
+  const [searchQ, setSearchQ] = useState("")
+  const [searchRows, setSearchRows] = useState<
+    Array<{
+      id: number
+      date: string
+      description: string
+      amount: number
+      transactionType?: string
+      transaction_type?: string
+      reference?: string | null
+    }>
+  >([])
+  const [searchLoading, setSearchLoading] = useState(false)
+  // Debounced fetch — fires whenever the modal is open and the query
+  // settles for ~250ms.
+  useEffect(() => {
+    if (!searchOpen) return
+    const t = setTimeout(async () => {
+      setSearchLoading(true)
+      try {
+        const r = await api.get<typeof searchRows>("/api/transactions", {
+          ...(searchQ ? { q: searchQ } : {}),
+        })
+        setSearchRows(r.slice(0, 50))
+      } catch {
+        /* api helper toasts */
+      } finally {
+        setSearchLoading(false)
+      }
+    }, 250)
+    return () => clearTimeout(t)
+  }, [searchOpen, searchQ])
 
   // Prefer server-configured Square credentials (SQUARE_ACCESS_TOKEN in
   // .env.local). Fall back to localStorage for users running their own
@@ -247,6 +283,11 @@ export default function SquareIntegrationPage() {
 
   return (
     <div className="flex h-full min-h-0 flex-col gap-4 [&_*]:min-w-0 max-w-full overflow-x-clip">
+      <div className="flex items-center justify-end">
+        <Button intent="outline" size="sm" onPress={() => setSearchOpen(true)}>
+          Search transactions
+        </Button>
+      </div>
       <Card>
         <CardHeader>
           <CardTitle>Square — paid invoices</CardTitle>
@@ -582,6 +623,90 @@ export default function SquareIntegrationPage() {
             </ModalFooter>
           </>
         )}
+      </ModalContent>
+
+      <ModalContent
+        size="2xl"
+        isOpen={searchOpen}
+        onOpenChange={(v) => setSearchOpen(v)}
+      >
+        <ModalHeader>
+          <ModalTitle>Search local transactions</ModalTitle>
+        </ModalHeader>
+        <ModalBody className="grid gap-3">
+          <TextField value={searchQ} onChange={setSearchQ} autoFocus>
+            <Label className="sr-only">Search</Label>
+            <Input placeholder="Search by description, reference, amount…" />
+          </TextField>
+          <div className="max-h-[60vh] overflow-auto rounded-lg border">
+            <Table aria-label="Local transactions">
+              <IntentTableHeader>
+                <TableColumn id="date">Date</TableColumn>
+                <TableColumn id="desc" isRowHeader className="w-full">
+                  Description
+                </TableColumn>
+                <TableColumn id="type">Type</TableColumn>
+                <TableColumn id="amt">Amount</TableColumn>
+              </IntentTableHeader>
+              <TableBody
+                items={searchRows.map((r) => ({ ...r, id: r.id }))}
+                renderEmptyState={() => (
+                  <div className="p-8 text-center text-sm text-muted-fg">
+                    {searchLoading
+                      ? "Searching…"
+                      : searchQ
+                        ? "No matches."
+                        : "Type to search your transactions."}
+                  </div>
+                )}
+              >
+                {(r: any) => {
+                  const t = r.transactionType ?? r.transaction_type
+                  return (
+                    <TableRow id={r.id}>
+                      <TableCell className="tabular-nums whitespace-nowrap">
+                        {r.date}
+                      </TableCell>
+                      <TableCell>
+                        <div className="font-medium">{r.description}</div>
+                        {r.reference && (
+                          <div className="text-xs text-muted-fg">
+                            {r.reference}
+                          </div>
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        <Badge
+                          intent={
+                            t === "deposit"
+                              ? "success"
+                              : t === "withdrawal"
+                                ? "danger"
+                                : "info"
+                          }
+                        >
+                          {String(t).replace("_", " ")}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-right tabular-nums font-semibold">
+                        {fmtMoney(Number(r.amount))}
+                      </TableCell>
+                    </TableRow>
+                  )
+                }}
+              </TableBody>
+            </Table>
+          </div>
+          <p className="text-xs text-muted-fg">
+            Showing the first 50 results. Read-only — for full editing,
+            use the Transactions page.
+          </p>
+        </ModalBody>
+        <ModalFooter>
+          <Button intent="outline" onPress={() => setSearchOpen(false)}>
+            Close
+          </Button>
+        </ModalFooter>
       </ModalContent>
     </div>
   )
