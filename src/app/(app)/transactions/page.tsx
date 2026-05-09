@@ -89,14 +89,17 @@ const TYPE_INTENT: Record<
 }
 
 type SimpleKind = "deposit" | "withdrawal"
+type SimpleSplit = { category_id?: number; amount: number }
 type SimpleForm = {
   date: string
   description: string
   reference: string
   kind: SimpleKind
   account_id?: number
-  category_id?: number
-  amount: number
+  // Category splits (income lines for deposits, expense lines for
+  // withdrawals). One entry by default; users can add more so a
+  // compound deposit like RBC ← Sales + GST is fully editable.
+  splits: SimpleSplit[]
   tax_ids?: number[]
 }
 
@@ -114,6 +117,42 @@ type JournalForm = {
 }
 
 const today = () => new Date().toISOString().slice(0, 10)
+
+// Decompose a transaction into the simple form's principal + N category
+// splits. Deposits: principal = sole asset/debit line, splits = every
+// credit line. Withdrawals: principal = sole credit line, splits =
+// every debit line. Returns null if the principal can't be uniquely
+// identified (e.g. asset-to-asset transfer with two debit asset lines).
+function txnToSimpleParts(t: Pick<Txn, "journal_lines" | "amount"> & {
+  transactionType?: string
+}): {
+  kind: SimpleKind
+  account_id?: number
+  splits: SimpleSplit[]
+} | null {
+  const txnType =
+    (t as any).transaction_type ?? t.transactionType
+  if (txnType !== "deposit" && txnType !== "withdrawal") return null
+  const kind: SimpleKind = txnType
+  const principalSide = kind === "deposit" ? "debit" : "credit"
+  const splitSide = kind === "deposit" ? "credit" : "debit"
+  const principalLines = t.journal_lines.filter(
+    (l) => Number(principalSide === "debit" ? l.debit : l.credit) > 0,
+  )
+  if (principalLines.length !== 1) return null
+  const principal = principalLines[0]
+  const splitLines = t.journal_lines.filter(
+    (l) => Number(splitSide === "debit" ? l.debit : l.credit) > 0,
+  )
+  return {
+    kind,
+    account_id: principal.account_id,
+    splits: splitLines.map((l) => ({
+      category_id: l.account_id,
+      amount: Number(splitSide === "debit" ? l.debit : l.credit),
+    })),
+  }
+}
 
 const useDebouncedValue = <T,>(v: T, ms: number) => {
   const [d, setD] = useState(v)
@@ -264,9 +303,13 @@ export default function TransactionsPage() {
             description: r.description ?? "",
             reference: r.reference ?? "",
             kind: "withdrawal",
-            amount: Number(r.amount) || 0,
             account_id: r.account_id ?? undefined,
-            category_id: r.category_id ?? undefined,
+            splits: [
+              {
+                category_id: r.category_id ?? undefined,
+                amount: Number(r.amount) || 0,
+              },
+            ],
           })
           setAiReason(
             r.reasoning_summary || (r.reasoning_steps && r.reasoning_steps.length)
@@ -292,7 +335,8 @@ export default function TransactionsPage() {
           const today_ = today()
           const txnType =
             (src as any).transaction_type ?? src.transactionType
-          if (txnType === "journal_entry" || src.journal_lines.length !== 2) {
+          const simpleParts = txnToSimpleParts(src)
+          if (txnType === "journal_entry" || !simpleParts) {
             setTab("journal")
             setJournal({
               date: today_,
@@ -306,21 +350,12 @@ export default function TransactionsPage() {
               })),
             })
           } else {
-            const debitLine = src.journal_lines.find((l) => Number(l.debit) > 0)
-            const creditLine = src.journal_lines.find((l) => Number(l.credit) > 0)
-            const kind: SimpleKind =
-              txnType === "withdrawal" ? "withdrawal" : "deposit"
-            const accountLine = kind === "deposit" ? debitLine : creditLine
-            const categoryLine = kind === "deposit" ? creditLine : debitLine
             setTab("simple")
             setSimple({
               date: today_,
               description: src.description,
               reference: src.reference ?? "",
-              kind,
-              amount: Number(src.amount),
-              account_id: accountLine?.account_id,
-              category_id: categoryLine?.account_id,
+              ...simpleParts,
             })
           }
           setOpen(true)
@@ -374,7 +409,7 @@ export default function TransactionsPage() {
     description: "",
     reference: "",
     kind: "deposit",
-    amount: 0,
+    splits: [{ category_id: undefined, amount: 0 }],
   })
   const [journal, setJournal] = useState<JournalForm>({
     date: today(),
@@ -398,7 +433,7 @@ export default function TransactionsPage() {
       description: "",
       reference: "",
       kind: "deposit",
-      amount: 0,
+      splits: [{ category_id: undefined, amount: 0 }],
     }
     const emptyJournal: JournalForm = {
       date: today(),
@@ -428,9 +463,8 @@ export default function TransactionsPage() {
     const simpleDirty =
       !!s.description ||
       !!s.reference ||
-      (s.amount ?? 0) > 0 ||
+      s.splits.some((sp) => sp.amount > 0 || sp.category_id !== undefined) ||
       s.account_id !== undefined ||
-      s.category_id !== undefined ||
       (s.tax_ids?.length ?? 0) > 0
     const journalDirty =
       !!j.description ||
@@ -447,7 +481,7 @@ export default function TransactionsPage() {
       description: "",
       reference: "",
       kind: "deposit",
-      amount: 0,
+      splits: [{ category_id: undefined, amount: 0 }],
     })
     setJournal({
       date: today(),
@@ -508,7 +542,11 @@ export default function TransactionsPage() {
   const editTxn = (t: Txn) => {
     setEditingId(t.id)
     const txnType = (t as any).transaction_type ?? t.transactionType
-    if (txnType === "journal_entry" || t.journal_lines.length !== 2) {
+    const simpleParts = txnToSimpleParts(t)
+    if (txnType === "journal_entry" || !simpleParts) {
+      // Pure JE, or a deposit/withdrawal we can't decompose into a single
+      // principal + N splits (e.g. multi-asset transfer). Fall back to
+      // the journal editor so the user keeps full line-level control.
       setTab("journal")
       setJournal({
         date: t.date,
@@ -522,21 +560,12 @@ export default function TransactionsPage() {
         })),
       })
     } else {
-      const debitLine = t.journal_lines.find((l) => Number(l.debit) > 0)
-      const creditLine = t.journal_lines.find((l) => Number(l.credit) > 0)
-      const kind: SimpleKind =
-        txnType === "withdrawal" ? "withdrawal" : "deposit"
-      const accountLine = kind === "deposit" ? debitLine : creditLine
-      const categoryLine = kind === "deposit" ? creditLine : debitLine
       setTab("simple")
       setSimple({
         date: t.date,
         description: t.description,
         reference: t.reference ?? "",
-        kind,
-        amount: Number(t.amount),
-        account_id: accountLine?.account_id,
-        category_id: categoryLine?.account_id,
+        ...simpleParts,
         tax_ids: (t as any).tax_ids ?? [],
       })
     }
@@ -578,33 +607,34 @@ export default function TransactionsPage() {
   const save = async () => {
     let payload: any
     if (tab === "simple") {
+      const splits = simple.splits.filter(
+        (s) => s.category_id !== undefined && s.amount > 0,
+      )
       if (
         !simple.account_id ||
-        !simple.category_id ||
-        simple.amount <= 0 ||
+        splits.length === 0 ||
         !simple.description
       ) {
-        toast.error("Fill in account, category, amount, description")
+        toast.error("Fill in account, at least one category split, description")
         return
       }
-      const lines =
+      const total = splits.reduce((s, x) => s + x.amount, 0)
+      const principal = simple.kind === "deposit"
+        ? { account_id: simple.account_id, debit: total, credit: 0 }
+        : { account_id: simple.account_id, debit: 0, credit: total }
+      const splitLines = splits.map((sp) =>
         simple.kind === "deposit"
-          ? [
-              { account_id: simple.account_id, debit: simple.amount, credit: 0 },
-              { account_id: simple.category_id, debit: 0, credit: simple.amount },
-            ]
-          : [
-              { account_id: simple.category_id, debit: simple.amount, credit: 0 },
-              { account_id: simple.account_id, debit: 0, credit: simple.amount },
-            ]
+          ? { account_id: sp.category_id!, debit: 0, credit: sp.amount }
+          : { account_id: sp.category_id!, debit: sp.amount, credit: 0 },
+      )
       payload = {
         transaction: {
           date: simple.date,
           description: simple.description,
           reference: simple.reference,
           transaction_type: simple.kind,
-          amount: simple.amount,
-          journal_lines_attributes: lines,
+          amount: total,
+          journal_lines_attributes: [principal, ...splitLines],
           tax_ids: simple.tax_ids ?? [],
         },
       }
@@ -1052,8 +1082,8 @@ export default function TransactionsPage() {
               className="mb-4"
             >
               <TabList>
-                <Tab id="simple">Simple</Tab>
-                <Tab id="journal">Detailed</Tab>
+                <Tab id="simple">Deposit / Withdrawal</Tab>
+                <Tab id="journal">Journal Entry</Tab>
               </TabList>
             </Tabs>
             {tab === "simple" ? (
@@ -1115,54 +1145,105 @@ export default function TransactionsPage() {
                     </ComboBoxContent>
                   </ComboBox>
                 </div>
-                <div className="grid gap-4 sm:grid-cols-2">
-                  <NumberField
-                    value={simple.amount}
-                    onChange={(v) =>
-                      setSimple({
-                        ...simple,
-                        amount: Number.isFinite(v) ? v : 0,
-                      })
-                    }
-                    minValue={0}
-                    step={0.01}
-                    formatOptions={{
-                      style: "decimal",
-                      minimumFractionDigits: 2,
-                    }}
-                  >
-                    <Label>Amount</Label>
-                    <NumberInput leading={<CurrencyDollarIcon />} />
-                  </NumberField>
-                  <ComboBox
-                    aria-label="Category"
-                    selectedKey={simple.category_id ?? null}
-                    onSelectionChange={(k) =>
-                      setSimple({
-                        ...simple,
-                        category_id: k == null ? undefined : Number(k),
-                      })
-                    }
-                  >
-                    <Label>Category</Label>
-                    <ComboBoxInput placeholder="Select category" />
-                    <ComboBoxContent
-                      items={
-                        simple.kind === "deposit"
-                          ? incomeAccounts
-                          : expenseAccounts
+                <div className="grid gap-2">
+                  <div className="flex items-center justify-between">
+                    <Label>Categories</Label>
+                    <Button
+                      intent="outline"
+                      size="xs"
+                      onPress={() =>
+                        setSimple({
+                          ...simple,
+                          splits: [
+                            ...simple.splits,
+                            { category_id: undefined, amount: 0 },
+                          ],
+                        })
                       }
                     >
-                      {(a) => (
-                        <ComboBoxItem
-                          id={a.id}
-                          textValue={`${a.code} — ${a.name}`}
+                      <IconPlus className="size-3.5" /> Add split
+                    </Button>
+                  </div>
+                  {simple.splits.map((sp, idx) => (
+                    <div
+                      key={idx}
+                      className="grid gap-2 sm:grid-cols-[1fr_auto_auto]"
+                    >
+                      <ComboBox
+                        aria-label={`Category ${idx + 1}`}
+                        selectedKey={sp.category_id ?? null}
+                        onSelectionChange={(k) =>
+                          setSimple({
+                            ...simple,
+                            splits: simple.splits.map((s, i) =>
+                              i === idx
+                                ? {
+                                    ...s,
+                                    category_id:
+                                      k == null ? undefined : Number(k),
+                                  }
+                                : s,
+                            ),
+                          })
+                        }
+                      >
+                        <ComboBoxInput placeholder="Select category" />
+                        <ComboBoxContent
+                          items={
+                            simple.kind === "deposit"
+                              ? incomeAccounts
+                              : expenseAccounts
+                          }
                         >
-                          {`${a.code} — ${a.name}`}
-                        </ComboBoxItem>
-                      )}
-                    </ComboBoxContent>
-                  </ComboBox>
+                          {(a) => (
+                            <ComboBoxItem
+                              id={a.id}
+                              textValue={`${a.code} — ${a.name}`}
+                            >
+                              {`${a.code} — ${a.name}`}
+                            </ComboBoxItem>
+                          )}
+                        </ComboBoxContent>
+                      </ComboBox>
+                      <NumberField
+                        aria-label={`Amount ${idx + 1}`}
+                        value={sp.amount}
+                        onChange={(v) =>
+                          setSimple({
+                            ...simple,
+                            splits: simple.splits.map((s, i) =>
+                              i === idx
+                                ? { ...s, amount: Number.isFinite(v) ? v : 0 }
+                                : s,
+                            ),
+                          })
+                        }
+                        minValue={0}
+                        step={0.01}
+                        formatOptions={{
+                          style: "decimal",
+                          minimumFractionDigits: 2,
+                        }}
+                        className="sm:w-44"
+                      >
+                        <NumberInput leading={<CurrencyDollarIcon />} />
+                      </NumberField>
+                      <Button
+                        intent="outline"
+                        size="sq-sm"
+                        aria-label="Remove split"
+                        isDisabled={simple.splits.length <= 1}
+                        onPress={() =>
+                          setSimple({
+                            ...simple,
+                            splits: simple.splits.filter((_, i) => i !== idx),
+                          })
+                        }
+                      >
+                        <IconTrash />
+                      </Button>
+                    </div>
+                  ))}
                 </div>
                 <TextField
                   value={simple.description}
@@ -1205,7 +1286,9 @@ export default function TransactionsPage() {
                     </div>
                   </div>
                 )}
-                {simple.amount > 0 && (() => {
+                {(() => {
+                  const total = simple.splits.reduce((s, x) => s + x.amount, 0)
+                  if (!(total > 0)) return null
                   const selected = activeTaxes.filter((t) =>
                     (simple.tax_ids ?? []).includes(t.id),
                   )
@@ -1213,8 +1296,7 @@ export default function TransactionsPage() {
                     (s, t) => s + Number(t.rate),
                     0,
                   )
-                  const net =
-                    sumRates > 0 ? simple.amount / (1 + sumRates) : simple.amount
+                  const net = sumRates > 0 ? total / (1 + sumRates) : total
                   return (
                     <div className="ml-auto rounded-md border bg-muted/30 px-4 py-3 text-sm grid gap-1 min-w-[14rem]">
                       {selected.length > 0 && (
@@ -1248,7 +1330,7 @@ export default function TransactionsPage() {
                       >
                         <span>Grand total</span>
                         <span className="font-mono tabular-nums">
-                          {fmtMoney(simple.amount)}
+                          {fmtMoney(total)}
                         </span>
                       </div>
                     </div>
