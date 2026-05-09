@@ -275,9 +275,9 @@ export default function ImportPage() {
                       {(a) => (
                         <ComboBoxItem
                           id={a.id}
-                          textValue={`${a.code} — ${a.name}`}
+                          textValue={`${a.code ? `${a.code} — ${a.name}` : a.name}`}
                         >
-                          {`${a.code} — ${a.name}`}
+                          {`${a.code ? `${a.code} — ${a.name}` : a.name}`}
                         </ComboBoxItem>
                       )}
                     </ComboBoxContent>
@@ -302,9 +302,9 @@ export default function ImportPage() {
                       {(a) => (
                         <ComboBoxItem
                           id={a.id}
-                          textValue={`${a.code} — ${a.name}`}
+                          textValue={`${a.code ? `${a.code} — ${a.name}` : a.name}`}
                         >
-                          {`${a.code} — ${a.name}`}
+                          {`${a.code ? `${a.code} — ${a.name}` : a.name}`}
                         </ComboBoxItem>
                       )}
                     </ComboBoxContent>

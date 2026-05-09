@@ -25,8 +25,12 @@ export async function GET() {
     order by a.code nulls last, a.id
   `)
   return NextResponse.json(
+    // Neon's HTTP driver returns bigint columns as strings; coerce id
+    // back to number so client `selectedKey={Number}` comparisons in
+    // ComboBoxes resolve and selection sticks.
     rows.rows.map((r) => ({
       ...r,
+      id: Number(r.id),
       balance: Number(r.balance),
     })),
   )

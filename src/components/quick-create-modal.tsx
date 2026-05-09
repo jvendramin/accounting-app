@@ -333,8 +333,8 @@ function TxnForm({
             <ComboBoxInput placeholder="Select account" />
             <ComboBoxContent items={cashAccounts}>
               {(a) => (
-                <ComboBoxItem id={a.id} textValue={`${a.code} — ${a.name}`}>
-                  {`${a.code} — ${a.name}`}
+                <ComboBoxItem id={a.id} textValue={`${a.code ? `${a.code} — ${a.name}` : a.name}`}>
+                  {`${a.code ? `${a.code} — ${a.name}` : a.name}`}
                 </ComboBoxItem>
               )}
             </ComboBoxContent>
@@ -364,8 +364,8 @@ function TxnForm({
               items={kind === "deposit" ? incomeAccounts : expenseAccounts}
             >
               {(a) => (
-                <ComboBoxItem id={a.id} textValue={`${a.code} — ${a.name}`}>
-                  {`${a.code} — ${a.name}`}
+                <ComboBoxItem id={a.id} textValue={`${a.code ? `${a.code} — ${a.name}` : a.name}`}>
+                  {`${a.code ? `${a.code} — ${a.name}` : a.name}`}
                 </ComboBoxItem>
               )}
             </ComboBoxContent>
