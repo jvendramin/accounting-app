@@ -153,6 +153,13 @@ export const transactionDrafts = pgTable("transaction_drafts", {
 })
 export type TransactionDraft = typeof transactionDrafts.$inferSelect
 
+export const squareIgnoredInvoices = pgTable("square_ignored_invoices", {
+  squareId: varchar("square_id").primaryKey(),
+  ignoredAt: timestamp("ignored_at", { precision: 6, mode: "date" })
+    .defaultNow()
+    .notNull(),
+})
+
 export const userPreferences = pgTable("user_preferences", {
   userSub: varchar("user_sub").primaryKey(),
   prefs: text("prefs").notNull().default("{}"),

@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server"
 import { z } from "zod"
 import { sql } from "drizzle-orm"
-import { db } from "@/lib/db"
+import { db, squareIgnoredInvoices } from "@/lib/db"
 
 export const dynamic = "force-dynamic"
 export const runtime = "nodejs"
@@ -157,6 +157,11 @@ export async function POST(req: Request) {
   //    reference — the user wants a pure (date, amount) signal so
   //    manually-entered deposits or differently-described imports
   //    still match.
+  // Pull the user-curated ignore list once so we can filter the
+  // returned suggestions before they ever hit the UI.
+  const ignoredRows = await db.select().from(squareIgnoredInvoices)
+  const ignoredSet = new Set(ignoredRows.map((r) => r.squareId))
+
   const existing = await db.execute(sql`
     select id, date, amount, description, reference
       from transactions where transaction_type = 'deposit'
@@ -271,6 +276,7 @@ export async function POST(req: Request) {
       }
     })
     .filter((s) => s.amount > 0)
+    .filter((s) => !ignoredSet.has(s.square_id))
 
   return NextResponse.json({
     invoices: suggestions,

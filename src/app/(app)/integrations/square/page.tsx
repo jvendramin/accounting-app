@@ -94,6 +94,47 @@ export default function SquareIntegrationPage() {
     }>
   >([])
   const [searchLoading, setSearchLoading] = useState(false)
+  // Persisted ignore list — Square invoices the user explicitly
+  // doesn't want to see in the suggestion table again.
+  const [ignored, setIgnored] = useState<
+    Array<{ square_id: string; ignored_at: string }>
+  >([])
+  const [ignoring, setIgnoring] = useState(false)
+  const reloadIgnored = () =>
+    api
+      .get<{ ignored: typeof ignored }>("/api/integrations/square/ignore")
+      .then((r) => setIgnored(r.ignored ?? []))
+      .catch(() => {})
+  useEffect(() => {
+    reloadIgnored()
+  }, [])
+
+  const ignoreSelected = async () => {
+    const ids = Array.from(selected)
+    if (ids.length === 0) return
+    setIgnoring(true)
+    try {
+      await api.post("/api/integrations/square/ignore", { square_ids: ids })
+      toast.success(`Ignored ${ids.length}`)
+      setSelected(new Set())
+      await reloadIgnored()
+      if (resp) await sync()
+    } catch (e) {
+      const m = e instanceof Error ? e.message : "Ignore failed"
+      toast.error(m)
+    } finally {
+      setIgnoring(false)
+    }
+  }
+  const unignore = async (id: string) => {
+    await fetch("/api/integrations/square/ignore", {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ square_ids: [id] }),
+    })
+    await reloadIgnored()
+    if (resp) await sync()
+  }
   // Debounced fetch — fires whenever the modal is open and the query
   // settles for ~250ms.
   useEffect(() => {
@@ -411,6 +452,16 @@ export default function SquareIntegrationPage() {
                   </ComboBoxContent>
                 </ComboBox>
                 <Button
+                  intent="outline"
+                  onPress={ignoreSelected}
+                  isPending={ignoring}
+                  isDisabled={
+                    selected.size === 0 || newSuggestions.length === 0
+                  }
+                >
+                  Ignore {selected.size}
+                </Button>
+                <Button
                   onPress={importSelected}
                   isPending={importing}
                   isDisabled={
@@ -542,6 +593,35 @@ export default function SquareIntegrationPage() {
             </Card>
           )}
         </>
+      )}
+
+      {ignored.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">
+              {ignored.length} ignored invoice{ignored.length === 1 ? "" : "s"}
+            </CardTitle>
+            <p className="text-sm text-muted-fg">
+              These won&rsquo;t appear in the suggestion list. Click an
+              entry to bring it back.
+            </p>
+          </CardHeader>
+          <CardContent className="px-4 py-2">
+            <div className="flex flex-wrap gap-2">
+              {ignored.map((i) => (
+                <button
+                  key={i.square_id}
+                  type="button"
+                  onClick={() => unignore(i.square_id)}
+                  className="rounded-full border bg-muted/30 px-3 py-1 text-xs hover:border-fg/30"
+                  title={`Ignored ${new Date(i.ignored_at).toLocaleString()}`}
+                >
+                  {i.square_id} <span className="text-muted-fg">— unignore</span>
+                </button>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
       )}
 
       <ModalContent
