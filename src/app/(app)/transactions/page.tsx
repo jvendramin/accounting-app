@@ -1052,8 +1052,8 @@ export default function TransactionsPage() {
               className="mb-4"
             >
               <TabList>
-                <Tab id="simple">Deposit / Withdrawal</Tab>
-                <Tab id="journal">Journal Entry</Tab>
+                <Tab id="simple">Simple</Tab>
+                <Tab id="journal">Detailed</Tab>
               </TabList>
             </Tabs>
             {tab === "simple" ? (
