@@ -51,13 +51,13 @@ import {
   ModalTitle,
 } from "@/components/ui/modal"
 import { QuickCreateModal, type QuickType } from "@/components/quick-create-modal"
-import { useState } from "react"
+import { useState, useMemo } from "react"
 import { toast } from "sonner"
 import type { Selection } from "react-aria-components"
 import { IconTrash } from "@/components/icons"
 
 type Suggestion = {
-  id: number
+  id: number | string
   date: string
   description: string
   reference: string | null
@@ -65,6 +65,8 @@ type Suggestion = {
   amount: number
   occurrences: number
   last_this_month: string | null
+  source?: "recurring" | "square"
+  square_id?: string
   journal_lines: Array<{
     id?: number
     account_id: number
@@ -153,7 +155,49 @@ export default function DashboardPage() {
     "dashboard:suggestions",
     () => api.get("/api/transactions/suggestions"),
   )
-  const suggestions = suggestionsQ.data ?? []
+  // Pull paid Square invoices that haven't been imported yet so they
+  // show up in the same suggestion list. Silently no-ops if Square
+  // creds aren't configured (the API responds 400 → caught here).
+  type SquareSync = {
+    invoices: Array<{
+      square_id: string
+      title: string
+      description: string
+      amount: number
+      paid_at: string
+      already_imported: boolean
+    }>
+  }
+  const squareQ = useCachedFetch<SquareSync>(
+    "dashboard:square-suggestions",
+    () =>
+      api
+        .post<SquareSync>("/api/integrations/square/sync", {})
+        .catch(() => ({ invoices: [] }) as SquareSync),
+  )
+  const squareSuggestions: Suggestion[] = useMemo(
+    () =>
+      (squareQ.data?.invoices ?? [])
+        .filter((i) => !i.already_imported)
+        .map((i) => ({
+          id: `square:${i.square_id}`,
+          date: i.paid_at,
+          description: i.description || i.title,
+          reference: `Square invoice ${i.square_id}`,
+          transaction_type: "deposit",
+          amount: i.amount,
+          occurrences: 1,
+          last_this_month: null,
+          source: "square" as const,
+          square_id: i.square_id,
+          journal_lines: [],
+        })),
+    [squareQ.data],
+  )
+  const suggestions = useMemo(
+    () => [...(suggestionsQ.data ?? []), ...squareSuggestions],
+    [suggestionsQ.data, squareSuggestions],
+  )
 
   const cloneSuggestion = (s: Suggestion) => {
     sessionStorage.setItem("clone-tx", JSON.stringify(s))
@@ -161,12 +205,17 @@ export default function DashboardPage() {
   }
 
   const [selected, setSelected] = useState<Selection>(new Set())
-  const selectedIds: number[] =
+  // Numeric ids only — Square suggestions use string ids ("square:…")
+  // and aren't dismissable through /suggestions/dismiss.
+  const selectedIds: number[] = (
     selected === "all"
       ? suggestions.map((s) => s.id)
-      : Array.from(selected as Set<number | string>).map((k) => Number(k))
+      : Array.from(selected as Set<number | string>)
+  )
+    .map((k) => Number(k))
+    .filter((n) => Number.isFinite(n))
   const selectedSuggestions = suggestions.filter((s) =>
-    selectedIds.includes(s.id),
+    typeof s.id === "number" ? selectedIds.includes(s.id) : false,
   )
 
   const dismissOne = async (id: number) => {
@@ -418,13 +467,26 @@ export default function DashboardPage() {
                     onAction={() => setActiveSuggestion(s)}
                   >
                     <TableCell>
-                      <div className="flex min-w-0 flex-col">
-                        <span className="truncate font-medium">
-                          {s.description}
-                        </span>
-                        <span className="truncate text-xs text-muted-fg">
-                          {suggestionReason(s)}
-                        </span>
+                      <div className="flex min-w-0 items-start gap-2">
+                        {s.source === "square" && (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img
+                            src="/integrations/square.png"
+                            alt="Square"
+                            title="Paid Square invoice"
+                            className="mt-0.5 size-4 shrink-0 rounded"
+                          />
+                        )}
+                        <div className="flex min-w-0 flex-col">
+                          <span className="truncate font-medium">
+                            {s.description}
+                          </span>
+                          <span className="truncate text-xs text-muted-fg">
+                            {s.source === "square"
+                              ? `Paid via Square · ${niceDate(s.date)}`
+                              : suggestionReason(s)}
+                          </span>
+                        </div>
                       </div>
                     </TableCell>
                     <TableCell>
@@ -514,25 +576,46 @@ export default function DashboardPage() {
                 )}
             </ModalBody>
             <ModalFooter className="pt-4 sm:pt-3">
-              <Button
-                intent="danger"
-                onPress={() => {
-                  const s = activeSuggestion
-                  setActiveSuggestion(null)
-                  void dismissOne(s.id)
-                }}
-              >
-                <IconTrash /> Dismiss
-              </Button>
-              <Button
-                onPress={() => {
-                  const s = activeSuggestion
-                  setActiveSuggestion(null)
-                  cloneSuggestion(s)
-                }}
-              >
-                <IconPlus /> Clone
-              </Button>
+              {activeSuggestion.source === "square" ? (
+                <>
+                  <Button
+                    intent="outline"
+                    onPress={() => setActiveSuggestion(null)}
+                  >
+                    Close
+                  </Button>
+                  <Button
+                    onPress={() => {
+                      setActiveSuggestion(null)
+                      router.push("/integrations/square")
+                    }}
+                  >
+                    Review in Square integration
+                  </Button>
+                </>
+              ) : (
+                <>
+                  <Button
+                    intent="danger"
+                    onPress={() => {
+                      const s = activeSuggestion
+                      setActiveSuggestion(null)
+                      void dismissOne(Number(s.id))
+                    }}
+                  >
+                    <IconTrash /> Dismiss
+                  </Button>
+                  <Button
+                    onPress={() => {
+                      const s = activeSuggestion
+                      setActiveSuggestion(null)
+                      cloneSuggestion(s)
+                    }}
+                  >
+                    <IconPlus /> Clone
+                  </Button>
+                </>
+              )}
             </ModalFooter>
           </>
         )}
