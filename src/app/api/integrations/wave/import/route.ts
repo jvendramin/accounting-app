@@ -7,6 +7,8 @@ import {
   transactions,
   journalLines,
   categories,
+  taxes,
+  transactionTaxes,
 } from "@/lib/db"
 
 export const dynamic = "force-dynamic"
@@ -85,9 +87,27 @@ export async function POST(req: Request) {
     accountsCreated.push(created)
   }
 
+  // Look up active taxes once. Wave's compound entries land tax (e.g.
+  // GST) on its own line under a tax account; we collapse those at
+  // import time into transaction_taxes metadata + a category bump so
+  // the simple form's mental model holds (deposit = principal asset
+  // ↔ category at gross, with tax tracked as metadata).
+  const allTaxes = await db.select().from(taxes)
+  const activeTaxes = allTaxes.filter((t) => t.isActive)
+  const matchTax = (acctName: string): number | null => {
+    const a = acctName.trim().toLowerCase()
+    if (!a) return null
+    const hit = activeTaxes.find((t) => {
+      const n = t.name.trim().toLowerCase()
+      return n && (a.includes(n) || n.includes(a))
+    })
+    return hit ? hit.id : null
+  }
+
   // Step 2: create one transaction + N journal_lines per group.
   let txCreated = 0
   let lineCreated = 0
+  let taxRecorded = 0
   const skipped: Array<{ date: string; description: string; reason: string }> =
     []
   for (const g of body.groups) {
@@ -99,6 +119,7 @@ export async function POST(req: Request) {
     const resolved = allLines.map((l) => ({
       ...l,
       account_id: byName.get(l.account.trim().toLowerCase()),
+      tax_id: matchTax(l.account),
     }))
     const missing = resolved.find((l) => l.account_id == null)
     if (missing) {
@@ -109,30 +130,87 @@ export async function POST(req: Request) {
       })
       continue
     }
-    const total = g.debits.reduce((s, l) => s + l.amount, 0)
-    // Determine a coarse transaction_type from the line shape, using the
-    // *largest* line on each side as the principal account so compound
-    // entries (sale → cash + tax, purchase → expense + GST input) still
-    // classify correctly:
-    // - principal debit is asset AND any credit is income → deposit
-    //   (money flowing INTO the asset, with income recognised)
-    // - principal credit is asset AND any debit is expense → withdrawal
-    //   (money flowing OUT of the asset, against an expense)
-    // - everything else (asset↔asset transfers, equity moves, refunds
-    //   without an obvious principal) → journal_entry
-    const principal = (lines: typeof g.debits) =>
+
+    // Pull tax-flavored lines out of the GL. Their amount becomes a
+    // transaction_taxes record; the offsetting non-tax line on the
+    // same side is bumped so debits = credits remain balanced
+    // (gross-on-category instead of separate tax line).
+    const taxLines = resolved.filter((l) => l.tax_id != null)
+    const glLines = resolved.filter((l) => l.tax_id == null)
+
+    const taxesByTaxId = new Map<
+      number,
+      { rate: number; tax_amount: number }
+    >()
+    for (const tl of taxLines) {
+      const t = activeTaxes.find((x) => x.id === tl.tax_id)
+      const rate = Number(t?.rate ?? 0)
+      const prev = taxesByTaxId.get(tl.tax_id as number)
+      taxesByTaxId.set(tl.tax_id as number, {
+        rate,
+        tax_amount: (prev?.tax_amount ?? 0) + tl.amount,
+      })
+    }
+
+    // Bump the largest non-tax line on each side by the total tax
+    // amount that came off that side. This preserves balance.
+    const bump = (side: "debit" | "credit") => {
+      const taxOnSide = taxLines
+        .filter((l) => l.side === side)
+        .reduce((s, l) => s + l.amount, 0)
+      if (taxOnSide === 0) return
+      const candidates = glLines.filter((l) => l.side === side)
+      if (candidates.length === 0) {
+        // No category line on this side to absorb — fall back: keep
+        // the original tax line (ambiguous compound).
+        const stragglers = taxLines.filter(
+          (l) => l.side === side && l.tax_id != null,
+        )
+        glLines.push(...stragglers.map((l) => ({ ...l, tax_id: null })))
+        return
+      }
+      const target = candidates.reduce((a, b) =>
+        b.amount > a.amount ? b : a,
+      )
+      target.amount = +(target.amount + taxOnSide).toFixed(2)
+    }
+    bump("debit")
+    bump("credit")
+
+    const newDebits = glLines.filter((l) => l.side === "debit")
+    const newCredits = glLines.filter((l) => l.side === "credit")
+    const total = newDebits.reduce((s, l) => s + l.amount, 0)
+    if (
+      newDebits.length === 0 ||
+      newCredits.length === 0 ||
+      Math.abs(total - newCredits.reduce((s, l) => s + l.amount, 0)) > 0.01
+    ) {
+      // Couldn't safely collapse — fall back to the original lines.
+      glLines.length = 0
+      glLines.push(...resolved.map((l) => ({ ...l, tax_id: null })))
+      taxesByTaxId.clear()
+    }
+
+    // Classify deposit / withdrawal / journal_entry from the post-bump
+    // shape (so e.g. a Sales+GST deposit still classifies as deposit
+    // even after we've stripped the GST line).
+    const finalDebits = glLines.filter((l) => l.side === "debit")
+    const finalCredits = glLines.filter((l) => l.side === "credit")
+    const principal = <T extends { amount: number }>(lines: T[]): T =>
       lines.reduce((a, b) => (b.amount > a.amount ? b : a))
     const typeOf = (acct: string) =>
       typeByName.get(acct.trim().toLowerCase())
-    const drPrincipal = typeOf(principal(g.debits).account)
-    const crPrincipal = typeOf(principal(g.credits).account)
-    const drTypes = g.debits.map((l) => typeOf(l.account))
-    const crTypes = g.credits.map((l) => typeOf(l.account))
+    const drPrincipal = typeOf(principal(finalDebits).account)
+    const crPrincipal = typeOf(principal(finalCredits).account)
+    const drTypes = finalDebits.map((l) => typeOf(l.account))
+    const crTypes = finalCredits.map((l) => typeOf(l.account))
     let txnType = "journal_entry"
     if (drPrincipal === "asset" && crTypes.includes("income"))
       txnType = "deposit"
     else if (crPrincipal === "asset" && drTypes.includes("expense"))
       txnType = "withdrawal"
+
+    const grossTotal = finalDebits.reduce((s, l) => s + l.amount, 0)
     const [tx] = await db
       .insert(transactions)
       .values({
@@ -140,19 +218,33 @@ export async function POST(req: Request) {
         description: g.description || "(imported)",
         reference: body.reference ?? "Wave import",
         transactionType: txnType,
-        amount: String(total),
+        amount: String(grossTotal),
       })
       .returning({ id: transactions.id })
     txCreated++
     await db.insert(journalLines).values(
-      resolved.map((l) => ({
+      glLines.map((l) => ({
         transactionId: tx.id,
         accountId: l.account_id as number,
         debit: l.side === "debit" ? String(l.amount) : "0",
         credit: l.side === "credit" ? String(l.amount) : "0",
       })),
     )
-    lineCreated += resolved.length
+    lineCreated += glLines.length
+
+    if (taxesByTaxId.size > 0) {
+      const taxRows = Array.from(taxesByTaxId.entries()).map(
+        ([taxId, { rate, tax_amount }]) => ({
+          transactionId: tx.id,
+          taxId,
+          rate: String(rate),
+          taxAmount: String(+tax_amount.toFixed(2)),
+          netAmount: String(+(grossTotal - tax_amount).toFixed(2)),
+        }),
+      )
+      await db.insert(transactionTaxes).values(taxRows)
+      taxRecorded += taxRows.length
+    }
   }
 
   // Step 3: upsert categories (income / expense buckets that mirror the
@@ -177,6 +269,7 @@ export async function POST(req: Request) {
     categories_created: catCreated,
     transactions_created: txCreated,
     lines_created: lineCreated,
+    tax_records_created: taxRecorded,
     skipped,
   })
 }

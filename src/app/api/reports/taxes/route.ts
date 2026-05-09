@@ -42,5 +42,31 @@ export async function GET(req: Request) {
     order by 1, tx.name
   `)
 
-  return NextResponse.json({ totals: totals.rows, monthly: monthly.rows })
+  // Per-transaction detail rows so the report page can show a
+  // drill-down of every contributing deposit/withdrawal.
+  const details = await db.execute(sql`
+    select
+      tt.transaction_id  as transaction_id,
+      tx.id              as tax_id,
+      tx.name            as tax_name,
+      tx.rate::float8    as tax_rate,
+      tt.rate::float8    as rate,
+      tt.tax_amount::float8 as tax_amount,
+      tt.net_amount::float8 as net_amount,
+      t.date             as date,
+      t.description      as description,
+      t.transaction_type as transaction_type,
+      t.amount::float8   as amount
+    from transaction_taxes tt
+    join transactions t on t.id = tt.transaction_id
+    join taxes tx on tx.id = tt.tax_id
+    where ${where}
+    order by t.date desc, t.id desc
+  `)
+
+  return NextResponse.json({
+    totals: totals.rows,
+    monthly: monthly.rows,
+    details: details.rows,
+  })
 }
