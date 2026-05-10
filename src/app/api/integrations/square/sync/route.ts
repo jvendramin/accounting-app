@@ -163,9 +163,19 @@ export async function POST(req: Request) {
   const ignoredSet = new Set(ignoredRows.map((r) => r.squareId))
 
   const existing = await db.execute(sql`
-    select id, date, amount, description, reference
-      from transactions where transaction_type = 'deposit'
+    select id, date, amount, description, reference, external_id
+      from transactions
+     where transaction_type = 'deposit'
+        or external_source = 'square'
   `)
+  // Hard match by external_id first — cheaper and unambiguous.
+  const byExternalId = new Map<string, number>()
+  for (const r of existing.rows as Array<{
+    id: string | number
+    external_id: string | null
+  }>) {
+    if (r.external_id) byExternalId.set(r.external_id, Number(r.id))
+  }
   type DepositRow = {
     id: number
     days: number
@@ -253,7 +263,12 @@ export async function POST(req: Request) {
       const desc = [title, customer ? `— ${customer}` : ""]
         .filter(Boolean)
         .join(" ")
-      const matched = findMatch(paidAt, amount)
+      // Prefer the external_id hard-match (cheaper, exact) before
+      // falling back to the date-window heuristic.
+      const hardId = byExternalId.get(inv.id)
+      const matched = hardId
+        ? deposits.find((d) => d.id === hardId) ?? null
+        : findMatch(paidAt, amount)
       const already = matched !== null
       return {
         square_id: inv.id,

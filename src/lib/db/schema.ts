@@ -20,6 +20,11 @@ export const accounts = pgTable("accounts", {
   name: varchar("name").notNull(),
   code: varchar("code"),
   accountType: varchar("account_type").notNull(),
+  // Orthogonal to accountType — drives "where money lives" pickers
+  // (cash) vs offsetting GL accounts (income / expense / tax).
+  // Backfilled by the 2026-05-10 migration; new rows can leave it
+  // null and the trigger / app will pick a sensible default.
+  category: varchar("category"),
   description: text("description"),
   createdAt: timestamp("created_at", { precision: 6, mode: "date" })
     .defaultNow()
@@ -37,6 +42,11 @@ export const transactions = pgTable("transactions", {
   transactionType: varchar("transaction_type").notNull(),
   amount: numeric("amount", { precision: 14, scale: 2 }),
   status: varchar("status").default("posted"),
+  // Strongly-typed integration source ('square', 'wave', etc.) +
+  // foreign id. Unique together so a Square invoice can only be
+  // imported once; replaces the regex on `reference`.
+  externalSource: varchar("external_source"),
+  externalId: varchar("external_id"),
   createdAt: timestamp("created_at", { precision: 6, mode: "date" })
     .defaultNow()
     .notNull(),
@@ -52,6 +62,11 @@ export const journalLines = pgTable("journal_lines", {
   debit: numeric("debit", { precision: 14, scale: 2 }).default("0").notNull(),
   credit: numeric("credit", { precision: 14, scale: 2 }).default("0").notNull(),
   memo: text("memo"),
+  // 'principal' (the cash leg) | 'category' (income/expense leg) |
+  // 'tax'. Auto-classified by the journal_lines_set_role trigger; any
+  // client (RN, future API consumers) can pick the cash side without
+  // re-implementing the largest-line heuristic.
+  role: varchar("role"),
   createdAt: timestamp("created_at", { precision: 6, mode: "date" })
     .defaultNow()
     .notNull(),
@@ -125,6 +140,10 @@ export const taxes = pgTable("taxes", {
   id: bigserial("id", { mode: "number" }).primaryKey(),
   name: varchar("name").notNull(),
   rate: numeric("rate", { precision: 7, scale: 4 }).notNull(),
+  // The GL account that gets credited (deposit) or debited
+  // (withdrawal) for this tax. Replaces fragile name-based
+  // matching between taxes.name and accounts.name.
+  accountId: bigint("account_id", { mode: "number" }),
   description: text("description"),
   isActive: boolean("is_active").notNull().default(true),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),

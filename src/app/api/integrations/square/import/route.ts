@@ -36,6 +36,8 @@ export async function POST(req: Request) {
         reference: `Square invoice ${inv.square_id}`,
         transactionType: "deposit",
         amount: String(inv.amount),
+        externalSource: "square",
+        externalId: inv.square_id,
       })
       .returning({ id: transactions.id })
     await db.insert(journalLines).values([
